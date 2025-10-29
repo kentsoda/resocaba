@@ -53,10 +53,20 @@ renderLayout('求人 編集/新規', function () {
         } catch (Throwable $e) {}
     }
     $tags = [];
+    $tagGroups = [];
     if ($pdo) {
         try {
-            $st = $pdo->query('SELECT id, name FROM tags ORDER BY sort_order ASC, id ASC');
+            $sql = "SELECT id, name, category FROM tags ORDER BY CASE WHEN category IS NULL OR category = '' THEN 1 ELSE 0 END, category ASC, sort_order ASC, id ASC";
+            $st = $pdo->query($sql);
             $tags = $st ? ($st->fetchAll(PDO::FETCH_ASSOC) ?: []) : [];
+            foreach ($tags as $tag) {
+                $catLabel = isset($tag['category']) ? trim((string)$tag['category']) : '';
+                $groupLabel = $catLabel !== '' ? $catLabel : '未分類';
+                if (!array_key_exists($groupLabel, $tagGroups)) {
+                    $tagGroups[$groupLabel] = [];
+                }
+                $tagGroups[$groupLabel][] = $tag;
+            }
         } catch (Throwable $e) {}
     }
 
@@ -290,12 +300,17 @@ renderLayout('求人 編集/新規', function () {
 
         <fieldset style="border:1px solid #e5e7eb; padding:12px;">
           <legend>タグ</legend>
-          <?php $selTags = (array)($meta['tag_ids'] ?? []); if ($tags): ?>
-            <div style="display:flex; flex-wrap:wrap; gap:12px;">
-              <?php foreach ($tags as $t): $tid = (int)$t['id']; $chk = in_array($tid, $selTags, true) ? ' checked' : ''; ?>
-                <label><input type="checkbox" name="tag_ids[]" value="<?= $tid ?>"<?= $chk ?>> <?= htmlspecialchars((string)$t['name'], ENT_QUOTES, 'UTF-8') ?></label>
-              <?php endforeach; ?>
-            </div>
+          <?php $selTags = (array)($meta['tag_ids'] ?? []); if ($tagGroups): ?>
+            <?php foreach ($tagGroups as $groupLabel => $tagList): ?>
+              <div style="margin-bottom:8px;">
+                <strong><?= htmlspecialchars((string)$groupLabel, ENT_QUOTES, 'UTF-8') ?></strong>
+                <div style="display:flex; flex-wrap:wrap; gap:12px; margin-top:6px;">
+                  <?php foreach ($tagList as $t): $tid = (int)$t['id']; $chk = in_array($tid, $selTags, true) ? ' checked' : ''; ?>
+                    <label><input type="checkbox" name="tag_ids[]" value="<?= $tid ?>"<?= $chk ?>> <?= htmlspecialchars((string)$t['name'], ENT_QUOTES, 'UTF-8') ?></label>
+                  <?php endforeach; ?>
+                </div>
+              </div>
+            <?php endforeach; ?>
           <?php else: ?>
             <p style="color:#64748b;">タグは未設定です</p>
           <?php endif; ?>
