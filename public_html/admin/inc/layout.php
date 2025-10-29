@@ -8,6 +8,7 @@ $menu = [
     ['label' => '店舗', 'href' => '/admin/stores/'] ,
     ['label' => 'お知らせ', 'href' => '/admin/notices/'] ,
     ['label' => 'ブログ', 'href' => '/admin/blog/'] ,
+    ['label' => 'アセット管理', 'href' => '/admin/assets_manager/'] ,
 ];
 
 function isActive(string $href): bool {
