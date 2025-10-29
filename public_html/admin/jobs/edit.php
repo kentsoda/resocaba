@@ -15,13 +15,20 @@ renderLayout('求人 編集/新規', function () {
     $values = [
         'title' => '',
         'status' => 'draft',
-        'store_id' => 0,
-        'salary' => '',
+        'store_id' => '',
+        'description_html' => '',
+        'message_html' => '',
+        'work_content_html' => '',
+        'employment_type' => '',
+        'salary_min' => '',
+        'salary_max' => '',
+        'salary_unit' => 'HOUR',
+        'region_prefecture' => '',
         'currency' => '',
         'job_type' => '',
         'card_message' => '',
-        'description' => '',
         'meta_json' => '',
+        'salary_text' => '',
     ];
 
     // Options per spec
@@ -70,19 +77,51 @@ renderLayout('求人 編集/新規', function () {
         } catch (Throwable $e) {}
     }
 
+    // Determine available columns for conditional bindings
+    $jobsColumns = [];
+    if ($pdo) {
+        try {
+            $colStmt = $pdo->query('SHOW COLUMNS FROM jobs');
+            if ($colStmt) {
+                foreach ($colStmt as $col) {
+                    if (isset($col['Field'])) {
+                        $jobsColumns[strtolower((string)$col['Field'])] = true;
+                    }
+                }
+            }
+        } catch (Throwable $e) {
+            error_log('[admin] jobs/edit columns error: ' . $e->getMessage());
+        }
+    }
+    $hasCurrency = array_key_exists('currency', $jobsColumns);
+    $hasJobType = array_key_exists('job_type', $jobsColumns);
+    $hasCardMessage = array_key_exists('card_message', $jobsColumns);
+
     // Load existing when editing (via shared get_job_by_id)
     if ($isEdit) {
         try {
             if (function_exists('get_job_by_id')) {
                 $job = get_job_by_id($id);
                 if (is_array($job)) {
-                    foreach ($values as $k => $_) {
-                        if (array_key_exists($k, $job) && (is_scalar($job[$k]) || $job[$k] === null)) {
-                            $values[$k] = (string)($job[$k] ?? '');
-                        }
+                    $values['title'] = isset($job['title']) ? (string)$job['title'] : $values['title'];
+                    $values['status'] = isset($job['status']) ? (string)$job['status'] : $values['status'];
+                    $values['store_id'] = isset($job['store_id']) && $job['store_id'] !== null ? (string)$job['store_id'] : '';
+                    $values['description_html'] = isset($job['description_html']) ? (string)$job['description_html'] : '';
+                    $values['message_html'] = isset($job['message_html']) ? (string)$job['message_html'] : '';
+                    $values['work_content_html'] = isset($job['work_content_html']) ? (string)$job['work_content_html'] : '';
+                    $values['employment_type'] = isset($job['employment_type']) ? (string)$job['employment_type'] : '';
+                    $values['salary_min'] = isset($job['salary_min']) && $job['salary_min'] !== null ? (string)(int)$job['salary_min'] : '';
+                    $values['salary_max'] = isset($job['salary_max']) && $job['salary_max'] !== null ? (string)(int)$job['salary_max'] : '';
+                    $values['salary_unit'] = isset($job['salary_unit']) ? (string)$job['salary_unit'] : $values['salary_unit'];
+                    $values['region_prefecture'] = isset($job['region_prefecture']) ? (string)$job['region_prefecture'] : '';
+                    if ($hasCurrency) {
+                        $values['currency'] = isset($job['currency']) ? (string)$job['currency'] : '';
                     }
-                    if (isset($job['store_id'])) {
-                        $values['store_id'] = (int)$job['store_id'];
+                    if ($hasJobType) {
+                        $values['job_type'] = isset($job['job_type']) ? (string)$job['job_type'] : '';
+                    }
+                    if ($hasCardMessage) {
+                        $values['card_message'] = isset($job['card_message']) ? (string)$job['card_message'] : '';
                     }
                     if (isset($job['meta_json']) && is_string($job['meta_json'])) {
                         $values['meta_json'] = $job['meta_json'];
@@ -101,26 +140,82 @@ renderLayout('求人 編集/新規', function () {
         if (is_array($decoded)) $meta = $decoded;
     }
 
+    if ($values['message_html'] === '' && isset($meta['message_html'])) {
+        $values['message_html'] = (string)$meta['message_html'];
+    }
+    if ($values['work_content_html'] === '' && isset($meta['work_content_html'])) {
+        $values['work_content_html'] = (string)$meta['work_content_html'];
+    }
+    if ($values['description_html'] === '' && isset($meta['description_html'])) {
+        $values['description_html'] = (string)$meta['description_html'];
+    }
+    if ($values['job_type'] === '' && isset($meta['job_type'])) {
+        $values['job_type'] = (string)$meta['job_type'];
+    }
+    if ($values['job_type'] === '' && $values['employment_type'] !== '') {
+        $values['job_type'] = $values['employment_type'];
+    }
+    if ($values['employment_type'] === '' && $values['job_type'] !== '') {
+        $values['employment_type'] = $values['job_type'];
+    }
+    if ($values['currency'] === '' && isset($meta['currency'])) {
+        $values['currency'] = (string)$meta['currency'];
+    }
+    if (isset($meta['salary_text'])) {
+        $values['salary_text'] = (string)$meta['salary_text'];
+    }
+    if ($values['salary_min'] === '' && isset($meta['salary_min'])) {
+        $values['salary_min'] = (string)(int)$meta['salary_min'];
+    }
+    if ($values['salary_max'] === '' && isset($meta['salary_max'])) {
+        $values['salary_max'] = (string)(int)$meta['salary_max'];
+    }
+    if ($values['region_prefecture'] === '' && isset($meta['region_prefecture'])) {
+        $values['region_prefecture'] = (string)$meta['region_prefecture'];
+    }
+    if ($values['card_message'] === '' && isset($meta['card_message'])) {
+        $values['card_message'] = (string)$meta['card_message'];
+    }
+    if ($values['salary_unit'] === '' && isset($meta['salary_unit'])) {
+        $values['salary_unit'] = (string)$meta['salary_unit'];
+    }
+    if ($values['job_type'] !== '' && !in_array($values['job_type'], $jobTypeOptions, true)) {
+        $jobTypeOptions[] = $values['job_type'];
+    }
+
     // Handle save
     if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         requireValidCsrfOrAbort();
         $values['title'] = trim(getPostString('title', 255));
         $values['status'] = getPostEnum('status', ['published', 'draft', 'archived'], 'draft');
-        $values['store_id'] = getPostInt('store_id', 0);
-        $values['salary'] = trim(getPostString('salary', 255));
+        $storeIdRaw = isset($_POST['store_id']) ? trim((string)$_POST['store_id']) : '';
+        $values['store_id'] = $storeIdRaw;
         $values['currency'] = trim(getPostString('currency', 16));
         $jt = trim(getPostString('job_type', 64));
-        $values['job_type'] = in_array($jt, $jobTypeOptions, true) ? $jt : '';
+        $jt = in_array($jt, $jobTypeOptions, true) ? $jt : '';
+        $values['job_type'] = $jt;
+        $values['employment_type'] = $jt;
         $values['card_message'] = trim(getPostString('card_message', 255));
-        $values['description'] = sanitizeAllowedHtml(getPostString('description'));
+        $values['description_html'] = sanitizeAllowedHtml(getPostString('description_html'));
+        $values['message_html'] = sanitizeAllowedHtml(getPostString('message_html'));
+        $values['work_content_html'] = sanitizeAllowedHtml(getPostString('work_content_html'));
+        $values['region_prefecture'] = trim(getPostString('region_prefecture', 255));
+        $values['salary_text'] = trim(getPostString('salary_text', 255));
+        $salaryMinRaw = isset($_POST['salary_min']) ? trim((string)$_POST['salary_min']) : '';
+        $salaryMaxRaw = isset($_POST['salary_max']) ? trim((string)$_POST['salary_max']) : '';
+        $values['salary_min'] = $salaryMinRaw === '' ? '' : (string)max(0, getPostInt('salary_min', 0));
+        $values['salary_max'] = $salaryMaxRaw === '' ? '' : (string)max(0, getPostInt('salary_max', 0));
+        $values['salary_unit'] = getPostEnum('salary_unit', array_keys($salaryUnitOptions), 'HOUR');
         // Build meta from spec fields
         $m = [];
-        $m['region_prefecture'] = trim(getPostString('region_prefecture', 255));
-        $m['salary_min'] = getPostInt('salary_min', 0);
-        $m['salary_max'] = getPostInt('salary_max', 0);
-        $m['salary_unit'] = getPostEnum('salary_unit', array_keys($salaryUnitOptions), '');
-        $m['message_html'] = sanitizeAllowedHtml(getPostString('message_html'));
-        $m['work_content_html'] = sanitizeAllowedHtml(getPostString('work_content_html'));
+        $m['region_prefecture'] = $values['region_prefecture'];
+        $m['salary_min'] = $values['salary_min'] === '' ? null : (int)$values['salary_min'];
+        $m['salary_max'] = $values['salary_max'] === '' ? null : (int)$values['salary_max'];
+        $m['salary_unit'] = $values['salary_unit'];
+        $m['salary_text'] = $values['salary_text'];
+        $m['message_html'] = $values['message_html'];
+        $m['work_content_html'] = $values['work_content_html'];
+        $m['description_html'] = $values['description_html'];
         $m['job_code'] = trim(getPostString('job_code', 100));
         $mt = trim(getPostString('min_term', 32));
         $m['min_term'] = in_array($mt, $minTermOptions, true) ? $mt : '未選択';
@@ -135,13 +230,27 @@ renderLayout('求人 編集/新規', function () {
         $m['benefits'] = $benefSel;
         $m['home_sections'] = getPostArrayStrings('home_sections');
         $m['tag_ids'] = getPostArrayInt('tag_ids');
+        if (!$hasCurrency) {
+            $m['currency'] = $values['currency'];
+        }
+        if (!$hasJobType) {
+            $m['job_type'] = $values['job_type'];
+        }
+        if (!$hasCardMessage) {
+            $m['card_message'] = $values['card_message'];
+        }
         // Merge any additional meta[*]
         if (isset($_POST['meta']) && is_array($_POST['meta'])) {
             foreach ($_POST['meta'] as $k => $v) {
                 if (!array_key_exists($k, $m)) $m[$k] = $v;
             }
         }
-        $values['meta_json'] = json_encode($m, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $metaJson = json_encode($m, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if ($metaJson === false) {
+            $metaJson = '{}';
+        }
+        $values['meta_json'] = $metaJson;
+        $meta = $m;
 
         if ($values['title'] === '') {
             $errors[] = 'タイトルは必須です';
@@ -149,30 +258,65 @@ renderLayout('求人 編集/新規', function () {
         if (!in_array($values['status'], ['published', 'draft', 'archived'], true)) {
             $errors[] = 'ステータスが不正です';
         }
-        if ($values['store_id'] <= 0) {
+        if ((int)$values['store_id'] <= 0) {
             $errors[] = '店舗は必須です';
         }
 
         if (!$errors && $pdo) {
             try {
                 $pdo->beginTransaction();
+                $columnData = [
+                    'title' => $values['title'],
+                    'status' => $values['status'],
+                    'store_id' => ((int)$values['store_id'] > 0) ? (int)$values['store_id'] : null,
+                    'description_html' => $values['description_html'] !== '' ? $values['description_html'] : null,
+                    'description_text' => ($values['description_html'] !== '') ? trim(strip_tags($values['description_html'])) : null,
+                    'message_html' => $values['message_html'] !== '' ? $values['message_html'] : null,
+                    'message_text' => ($values['message_html'] !== '') ? trim(strip_tags($values['message_html'])) : null,
+                    'work_content_html' => $values['work_content_html'] !== '' ? $values['work_content_html'] : null,
+                    'employment_type' => $values['employment_type'] !== '' ? $values['employment_type'] : null,
+                    'salary_min' => $values['salary_min'] === '' ? null : (int)$values['salary_min'],
+                    'salary_max' => $values['salary_max'] === '' ? null : (int)$values['salary_max'],
+                    'salary_unit' => $values['salary_unit'] !== '' ? $values['salary_unit'] : null,
+                    'region_prefecture' => $values['region_prefecture'] !== '' ? $values['region_prefecture'] : null,
+                    'meta_json' => $values['meta_json'],
+                ];
+                if ($hasCurrency) {
+                    $columnData['currency'] = $values['currency'] !== '' ? $values['currency'] : null;
+                }
+                if ($hasJobType) {
+                    $columnData['job_type'] = $values['job_type'] !== '' ? $values['job_type'] : null;
+                }
+                if ($hasCardMessage) {
+                    $columnData['card_message'] = $values['card_message'] !== '' ? $values['card_message'] : null;
+                }
+
+                $columns = array_keys($columnData);
+                $placeholders = array_map(fn($col) => ':' . $col, $columns);
                 if ($isEdit) {
-                    $sql = 'UPDATE jobs SET title=:title, status=:status, store_id=:store_id, salary=:salary, currency=:currency, job_type=:job_type, card_message=:card_message, description=:description, meta_json=:meta_json, updated_at=NOW() WHERE id=:id';
+                    $setParts = [];
+                    foreach ($columns as $col) {
+                        $setParts[] = $col . '=:' . $col;
+                    }
+                    $sql = 'UPDATE jobs SET ' . implode(', ', $setParts) . ', updated_at=NOW() WHERE id=:id';
                     $stmt = $pdo->prepare($sql);
                     $stmt->bindValue(':id', $id, PDO::PARAM_INT);
                 } else {
-                    $sql = 'INSERT INTO jobs (title, status, store_id, salary, currency, job_type, card_message, description, meta_json, created_at, updated_at) VALUES (:title,:status,:store_id,:salary,:currency,:job_type,:card_message,:description,:meta_json,NOW(),NOW())';
+                    $sql = 'INSERT INTO jobs (' . implode(', ', $columns) . ', created_at, updated_at) VALUES (' . implode(', ', $placeholders) . ', NOW(), NOW())';
                     $stmt = $pdo->prepare($sql);
                 }
-                $stmt->bindValue(':title', $values['title']);
-                $stmt->bindValue(':status', $values['status']);
-                $stmt->bindValue(':store_id', $values['store_id'], PDO::PARAM_INT);
-                $stmt->bindValue(':salary', $values['salary']);
-                $stmt->bindValue(':currency', $values['currency']);
-                $stmt->bindValue(':job_type', $values['job_type']);
-                $stmt->bindValue(':card_message', $values['card_message']);
-                $stmt->bindValue(':description', $values['description']);
-                $stmt->bindValue(':meta_json', $values['meta_json']);
+                foreach ($columnData as $col => $val) {
+                    $param = ':' . $col;
+                    if ($val === null) {
+                        $stmt->bindValue($param, null, PDO::PARAM_NULL);
+                        continue;
+                    }
+                    $type = PDO::PARAM_STR;
+                    if (in_array($col, ['store_id', 'salary_min', 'salary_max'], true)) {
+                        $type = PDO::PARAM_INT;
+                    }
+                    $stmt->bindValue($param, $val, $type);
+                }
                 $stmt->execute();
                 if (!$isEdit) {
                     $id = (int)$pdo->lastInsertId();
@@ -185,7 +329,7 @@ renderLayout('求人 編集/新規', function () {
                     $pdo->rollBack();
                 }
                 error_log('[admin] jobs/edit save error: ' . $e->getMessage());
-                $errors[] = '保存に失敗しました'. $e->getMessage();
+                $errors[] = '保存に失敗しました: ' . $e->getMessage();
             }
         }
     }
@@ -222,7 +366,7 @@ renderLayout('求人 編集/新規', function () {
           </select>
         </label>
         <div style="display:grid; grid-template-columns: 1fr 160px; gap:12px;">
-          <label>給与<br><input type="text" name="salary" value="<?= htmlspecialchars($values['salary'], ENT_QUOTES, 'UTF-8') ?>"></label>
+          <label>給与（自由入力）<br><input type="text" name="salary_text" value="<?= htmlspecialchars($values['salary_text'], ENT_QUOTES, 'UTF-8') ?>"></label>
           <label>通貨<br><input type="text" name="currency" value="<?= htmlspecialchars($values['currency'], ENT_QUOTES, 'UTF-8') ?>" placeholder="JPY"></label>
         </div>
         <label>募集職種<br>
@@ -233,19 +377,19 @@ renderLayout('求人 編集/新規', function () {
           </select>
         </label>
         <label>カード表示文<br><input type="text" name="card_message" value="<?= htmlspecialchars($values['card_message'], ENT_QUOTES, 'UTF-8') ?>"></label>
-        <label>概要メッセージ（HTML）<br><textarea class="js-wysiwyg" name="message_html" rows="10"><?= htmlspecialchars((string)($meta['message_html'] ?? ''), ENT_QUOTES, 'UTF-8') ?></textarea></label>
-        <label>お仕事の内容（HTML）<br><textarea class="js-wysiwyg" name="work_content_html" rows="12"><?= htmlspecialchars((string)($meta['work_content_html'] ?? ''), ENT_QUOTES, 'UTF-8') ?></textarea></label>
+        <label>概要メッセージ（HTML）<br><textarea class="js-wysiwyg" name="message_html" rows="10"><?= htmlspecialchars($values['message_html'] !== '' ? $values['message_html'] : (string)($meta['message_html'] ?? ''), ENT_QUOTES, 'UTF-8') ?></textarea></label>
+        <label>お仕事の内容（HTML）<br><textarea class="js-wysiwyg" name="work_content_html" rows="12"><?= htmlspecialchars($values['work_content_html'] !== '' ? $values['work_content_html'] : (string)($meta['work_content_html'] ?? ''), ENT_QUOTES, 'UTF-8') ?></textarea></label>
 
         <fieldset style="border:1px solid #e5e7eb; padding:12px;">
           <legend>勤務地・給与</legend>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-            <label>地域（都道府県等）<br><input type="text" name="region_prefecture" value="<?= htmlspecialchars((string)($meta['region_prefecture'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"></label>
+            <label>地域（都道府県等）<br><input type="text" name="region_prefecture" value="<?= htmlspecialchars($values['region_prefecture'] !== '' ? $values['region_prefecture'] : (string)($meta['region_prefecture'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"></label>
             <label>求人番号<br><input type="text" name="job_code" value="<?= htmlspecialchars((string)($meta['job_code'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"></label>
-            <label>給与（最小）<br><input type="number" name="salary_min" value="<?= (int)($meta['salary_min'] ?? 0) ?>" min="0"></label>
-            <label>給与（最大）<br><input type="number" name="salary_max" value="<?= (int)($meta['salary_max'] ?? 0) ?>" min="0"></label>
+            <label>給与（最小）<br><input type="number" name="salary_min" value="<?= htmlspecialchars($values['salary_min'] !== '' ? $values['salary_min'] : (string)($meta['salary_min'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" min="0"></label>
+            <label>給与（最大）<br><input type="number" name="salary_max" value="<?= htmlspecialchars($values['salary_max'] !== '' ? $values['salary_max'] : (string)($meta['salary_max'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" min="0"></label>
             <label>給与単位<br>
               <select name="salary_unit">
-                <?php $suNow = (string)($meta['salary_unit'] ?? ''); foreach ($salaryUnitOptions as $k => $lab): ?>
+                <?php $suNow = $values['salary_unit'] !== '' ? (string)$values['salary_unit'] : (string)($meta['salary_unit'] ?? ''); foreach ($salaryUnitOptions as $k => $lab): ?>
                   <option value="<?= htmlspecialchars($k, ENT_QUOTES, 'UTF-8') ?>"<?= $suNow === $k ? ' selected' : '' ?>><?= htmlspecialchars($lab, ENT_QUOTES, 'UTF-8') ?></option>
                 <?php endforeach; ?>
               </select>
@@ -316,7 +460,7 @@ renderLayout('求人 編集/新規', function () {
           <?php endif; ?>
         </fieldset>
 
-        <label>詳細（WYSIWYG・レガシー）<br><textarea class="js-wysiwyg" name="description" rows="8"><?= htmlspecialchars($values['description'], ENT_QUOTES, 'UTF-8') ?></textarea></label>
+        <label>詳細（HTML）<br><textarea class="js-wysiwyg" name="description_html" rows="8"><?= htmlspecialchars($values['description_html'] !== '' ? $values['description_html'] : (string)($meta['description_html'] ?? ''), ENT_QUOTES, 'UTF-8') ?></textarea></label>
 
         <div style="display:flex; gap:8px;">
           <button type="submit">保存</button>
