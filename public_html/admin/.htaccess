@@ -1,0 +1,10 @@
+AuthType Basic
+AuthName "Admin"
+AuthUserFile /home/xs724055/private/.htpasswd
+Require valid-user
+
+<IfModule mod_headers.c>
+  Header set X-Robots-Tag "noindex, nofollow"
+</IfModule>
+
+

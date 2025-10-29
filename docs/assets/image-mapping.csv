@@ -1,0 +1,22 @@
+source_file,element,old_path,new_path,alt,notes
+public_html/jobs.php,og_image,"https://placehold.co/1200x630/0ABAB5/ffffff?text=求人一覧",public_html/assets/images/articles/jobs-ogp-1200x630.jpg,,OGP用
+public_html/jobs.php,img_fallback,"https://placehold.co/1200x800/0ABAB5/ffffff?text=NO+IMAGE",public_html/assets/images/jobs/no-image-1280w.jpg,,求人カード/一覧・詳細 サムネイル
+public_html/jobs.php,feature_default,"https://placehold.co/600x400/0ABAB5/ffffff?text=Feature",public_html/assets/images/articles/feature-default-600w.jpg,,特集カード デフォルト
+public_html/jobs.php,ad_banner_1,"https://placehold.co/640x200/0ABAB5/ffffff?text=AD+BANNER+1",public_html/assets/images/ui/ad-banner-1-640x200.jpg,広告バナー 1,
+public_html/jobs.php,ad_banner_2,"https://placehold.co/640x200/f59e0b/ffffff?text=AD+BANNER+2",public_html/assets/images/ui/ad-banner-2-640x200.jpg,広告バナー 2,
+public_html/jobs.php,ad_banner_3,"https://placehold.co/640x200/1e293b/ffffff?text=AD+BANNER+3",public_html/assets/images/ui/ad-banner-3-640x200.jpg,広告バナー 3,
+public_html/jobs.php,ad_banner_4,"https://placehold.co/640x200/475569/ffffff?text=AD+BANNER+4",public_html/assets/images/ui/ad-banner-4-640x200.jpg,広告バナー 4,
+public_html/job.php,og_image_noimage,"https://placehold.co/1200x630/cccccc/ffffff?text=No+Image",public_html/assets/images/jobs/no-image-ogp-1200x630.jpg,,OGP用
+public_html/job.php,og_image_default,"https://placehold.co/1200x630/0ABAB5/ffffff?text=海外リゾキャバ求人.COM",public_html/assets/images/jobs/job-default-ogp-1200x630.jpg,,OGP用
+public_html/job.php,img_fallback,"https://placehold.co/1200x800/0ABAB5/ffffff?text=NO+IMAGE",public_html/assets/images/jobs/no-image-1280w.jpg,,関連記事サムネイル
+public_html/job.php,pickup_dynamic,"https://placehold.co/400x300/6FE986/ffffff?text=JOB+{id}",public_html/assets/images/jobs/pickup-{id}-400x300.jpg,,動的テキスト（要生成）
+public_html/job.php,article_default,"https://placehold.co/600x400/0ABAB5/ffffff?text=Article",public_html/assets/images/articles/article-default-600w.jpg,,記事カード デフォルト
+public_html/job.php,ad_banner_1,"https://placehold.co/640x200/0ABAB5/ffffff?text=AD+BANNER+1",public_html/assets/images/ui/ad-banner-1-640x200.jpg,広告バナー 1,
+public_html/job.php,ad_banner_2,"https://placehold.co/640x200/f59e0b/ffffff?text=AD+BANNER+2",public_html/assets/images/ui/ad-banner-2-640x200.jpg,広告バナー 2,
+public_html/job.php,ad_banner_3,"https://placehold.co/640x200/1e293b/ffffff?text=AD+BANNER+3",public_html/assets/images/ui/ad-banner-3-640x200.jpg,広告バナー 3,
+public_html/job.php,ad_banner_4,"https://placehold.co/640x200/475569/ffffff?text=AD+BANNER+4",public_html/assets/images/ui/ad-banner-4-640x200.jpg,広告バナー 4,
+public_html/announcement.php,og_image,"https://placehold.co/1200x630/0ABAB5/ffffff?text=NEWS",public_html/assets/images/articles/news-ogp-1200x630.jpg,,OGP（お知らせ）
+public_html/announcement.php,jsonld_image,"https://placehold.co/1200x800/f87171/ffffff?text=CRAZY+CAT'S+Hanoi",public_html/assets/images/articles/announcement-hero-1200x800.jpg,,JSON-LD用
+public_html/announcement.php,card_image_1,"https://placehold.co/1200x800/0ABAB5/ffffff?text=test1002+1",public_html/assets/images/jobs/job-33-hero-1200x800.jpg,,カード画像
+public_html/announcement.php,card_image_2,"https://placehold.co/600x400/6A7FCB/ffffff?text=JOB+22",public_html/assets/images/jobs/job-22-thumb-600x400.jpg,,カード画像
+public_html/announcement.php,card_image_3,"https://placehold.co/600x400/9FE231/ffffff?text=JOB+21",public_html/assets/images/jobs/job-21-thumb-600x400.jpg,,カード画像

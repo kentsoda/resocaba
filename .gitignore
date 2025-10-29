@@ -1,0 +1,163 @@
+# ============================================
+# 機密情報・認証情報
+# ============================================
+# データベース接続設定（パスワード含む）
+config/database.php
+# .htpasswd ファイル
+htpasswd/
+*.htpasswd
+# その他の機密設定ファイル
+*.env
+.env
+.env.local
+.env.*.local
+
+# ============================================
+# ログファイル
+# ============================================
+log/
+*.log
+*.log.*
+
+# ============================================
+# 一時ファイル・キャッシュ
+# ============================================
+# PHP セッションファイル
+sessions/
+tmp/
+temp/
+cache/
+*.tmp
+*.cache
+
+# ============================================
+# OS固有ファイル
+# ============================================
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.AppleDouble
+.LSOverride
+Icon
+*.swp
+*.swo
+*~
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+.directory
+.fuse_hidden*
+.Trash-*
+
+# ============================================
+# IDE・エディタ固有ファイル
+# ============================================
+# VSCode
+.vscode/
+*.code-workspace
+
+# PHPStorm / IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*.swn
+Session.vim
+.netrwhist
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# ============================================
+# メール関連（一時ファイルなど）
+# ============================================
+mail/tmp/
+mail/*.tmp
+mail/*.cache
+
+# ============================================
+# コンパイル・ビルド成果物
+# ============================================
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+*.pyc
+__pycache__/
+
+# ============================================
+# バックアップファイル
+# ============================================
+*.bak
+*.backup
+*.old
+*.orig
+*.save
+*_backup.*
+*_old.*
+
+# ============================================
+# アップロードされたファイル（例：ユーザーアップロード）
+# ============================================
+# public_html/uploads/
+# public_html/user_uploads/
+# アップロードディレクトリはプロジェクトによって異なるため、
+# 必要に応じてコメントを外してください
+
+# ============================================
+# その他
+# ============================================
+# Xserver PHP設定ディレクトリ
+xserver_php/
+
+# Composer
+/vendor/
+composer.phar
+composer.lock
+
+# Node.js（使用している場合）
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# 圧縮ファイル（通常はリポジトリに入れない）
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# テストカバレッジ
+coverage/
+.nyc_output/
+.phpunit.result.cache
+
