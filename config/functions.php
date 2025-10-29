@@ -85,6 +85,125 @@ function get_article_list($limit = 4) {
 }
 
 /**
+ * 店舗の営業時間を表示用文字列にまとめるヘルパー
+ *
+ * @param int|null $startHour
+ * @param string|null $endHour
+ * @return string
+ */
+function build_store_hours_label($startHour, $endHour): string {
+    $hasStart = $startHour !== null && $startHour !== '' && $startHour !== false;
+    $hasEnd = $endHour !== null && $endHour !== '' && $endHour !== false;
+    if (!$hasStart && !$hasEnd) {
+        return '';
+    }
+    $labelStart = '';
+    if ($hasStart) {
+        $startInt = (int)$startHour;
+        if ($startInt < 0) { $startInt = 0; }
+        if ($startInt > 23) { $startInt = 23; }
+        $labelStart = sprintf('%02d:00', $startInt);
+    }
+    $labelEnd = '';
+    if ($hasEnd) {
+        $endStr = is_string($endHour) ? trim($endHour) : (string)$endHour;
+        if ($endStr === '') {
+            $labelEnd = '';
+        } elseif (strcasecmp($endStr, 'LAST') === 0) {
+            $labelEnd = 'LAST';
+        } elseif (preg_match('/^\d{2}:\d{2}$/', $endStr)) {
+            $labelEnd = $endStr;
+        } elseif (preg_match('/^\d{1,2}$/', $endStr)) {
+            $endInt = (int)$endStr;
+            if ($endInt < 0) { $endInt = 0; }
+            if ($endInt > 23) { $endInt = 23; }
+            $labelEnd = sprintf('%02d:00', $endInt);
+        }
+    }
+    if ($labelStart !== '' && $labelEnd !== '') {
+        return $labelStart . '〜' . $labelEnd;
+    }
+    return $labelStart ?: $labelEnd;
+}
+
+/**
+ * 店舗レコードに共通の整形処理を適用する
+ *
+ * @param array $store
+ * @return array
+ */
+function normalize_store_record(array $store): array {
+    $store['category'] = isset($store['category']) && $store['category'] !== null ? (string)$store['category'] : '';
+
+    $startRaw = $store['business_hours_start'] ?? null;
+    if ($startRaw === '' || $startRaw === null) {
+        $store['business_hours_start'] = null;
+    } else {
+        $startInt = (int)$startRaw;
+        if ($startInt < 0) { $startInt = 0; }
+        if ($startInt > 23) { $startInt = 23; }
+        $store['business_hours_start'] = $startInt;
+    }
+
+    $endRaw = $store['business_hours_end'] ?? '';
+    if ($endRaw === null) {
+        $endRaw = '';
+    }
+    $endRaw = is_string($endRaw) ? trim($endRaw) : (string)$endRaw;
+    if ($endRaw === '') {
+        $store['business_hours_end'] = '';
+    } elseif (strcasecmp($endRaw, 'LAST') === 0) {
+        $store['business_hours_end'] = 'LAST';
+    } elseif (preg_match('/^\d{1,2}$/', $endRaw)) {
+        $endInt = (int)$endRaw;
+        if ($endInt < 0) { $endInt = 0; }
+        if ($endInt > 23) { $endInt = 23; }
+        $store['business_hours_end'] = sprintf('%02d:00', $endInt);
+    } elseif (preg_match('/^\d{2}:\d{2}$/', $endRaw)) {
+        $store['business_hours_end'] = $endRaw;
+    } else {
+        $store['business_hours_end'] = '';
+    }
+
+    $holidayRaw = isset($store['holiday']) && $store['holiday'] !== null ? (string)$store['holiday'] : '';
+    $holidayList = [];
+    if ($holidayRaw !== '') {
+        foreach (explode(',', $holidayRaw) as $holiday) {
+            $holiday = trim((string)$holiday);
+            if ($holiday !== '') {
+                $holidayList[] = $holiday;
+            }
+        }
+    }
+    $store['holiday'] = $holidayRaw;
+    $store['holiday_list'] = $holidayList;
+
+    $label = build_store_hours_label($store['business_hours_start'], $store['business_hours_end']);
+    $store['business_hours_label'] = $label;
+    if ((!isset($store['business_hours']) || $store['business_hours'] === null || $store['business_hours'] === '') && $label !== '') {
+        $store['business_hours'] = $label;
+    }
+
+    return $store;
+}
+
+/**
+ * 店舗レコード配列に整形処理を適用する
+ *
+ * @param array $stores
+ * @return array
+ */
+function normalize_store_records(array $stores): array {
+    foreach ($stores as $idx => $store) {
+        if (is_array($store)) {
+            $stores[$idx] = normalize_store_record($store);
+        }
+    }
+
+    return $stores;
+}
+
+/**
  * 店舗リストと画像を効率的に一括取得する関数
  * 
  * @return array|false 店舗データ（各店舗にimages配列が追加される）、失敗時はfalse
@@ -120,6 +239,10 @@ function get_store_list_with_images() {
         $store['images'] = isset($images_by_store[$store['id']]) ? $images_by_store[$store['id']] : [];
     }
     
+    unset($store);
+
+    $stores = normalize_store_records($stores);
+
     return $stores;
 }
 
@@ -411,6 +534,8 @@ function get_stores($filters = [], $offset = 0, $limit = 20) {
     }
     unset($store);
 
+    $stores = normalize_store_records($stores);
+
     return $stores;
 }
 
@@ -442,7 +567,7 @@ function get_job_by_id($id) {
     if (isset($job['store_id']) && (int)$job['store_id'] > 0) {
         $store = executeQuerySingle("SELECT * FROM stores WHERE id = ? AND (deleted_at IS NULL) LIMIT 1", [(int)$job['store_id']]);
         if ($store !== false && !empty($store)) {
-            $job['store'] = $store;
+            $job['store'] = normalize_store_record($store);
         }
     }
 
