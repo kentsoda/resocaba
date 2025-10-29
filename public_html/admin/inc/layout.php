@@ -7,6 +7,7 @@ $menu = [
     ['label' => 'タグ', 'href' => '/admin/tags/'] ,
     ['label' => '応募管理', 'href' => '/admin/applications/'] ,
     ['label' => '店舗', 'href' => '/admin/stores/'] ,
+    ['label' => '広告管理', 'href' => '/admin/ads/'] ,
     ['label' => 'FAQ', 'href' => '/admin/faqs/'] ,
     ['label' => 'お知らせ', 'href' => '/admin/notices/'] ,
     ['label' => 'ブログ', 'href' => '/admin/blog/'] ,
