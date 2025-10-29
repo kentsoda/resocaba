@@ -4,6 +4,7 @@
 $menu = [
     ['label' => 'ダッシュボード', 'href' => '/admin/'] ,
     ['label' => '求人管理', 'href' => '/admin/jobs/'] ,
+    ['label' => 'タグ', 'href' => '/admin/tags/'] ,
     ['label' => '応募管理', 'href' => '/admin/applications/'] ,
     ['label' => '店舗', 'href' => '/admin/stores/'] ,
     ['label' => 'FAQ', 'href' => '/admin/faqs/'] ,
