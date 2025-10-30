@@ -92,50 +92,65 @@ if ($pdo) {
 
 renderLayout($isEdit ? 'タグ編集' : 'タグ作成', function () use ($values, $errors, $isEdit, $id, $slug, $categoryOptions, $notFound) {
     ?>
-    <h1><?= $isEdit ? 'タグ編集' : 'タグ作成' ?></h1>
+    <h1 class="mb-2"><?= $isEdit ? 'タグ編集' : 'タグ作成' ?></h1>
+    <?php if ($isEdit): ?>
+      <p class="text-muted">ID: <?= (int)$id ?></p>
+    <?php endif; ?>
     <?php if ($notFound): ?>
-      <div class="card" style="border-color:#ef4444;">タグが見つかりません</div>
-      <p><a href="/admin/tags/">一覧に戻る</a></p>
+      <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        タグが見つかりません
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+      <p><a href="/admin/tags/" class="btn btn-outline-secondary">一覧に戻る</a></p>
       <?php return; ?>
     <?php endif; ?>
-
-    <?php if ($isEdit): ?>
-      <p>ID: <?= (int)$id ?></p>
-    <?php endif; ?>
     <?php if (isset($_GET['saved'])): ?>
-      <div class="card" style="border-color:#22c55e;">保存しました</div>
+      <div class="alert alert-success alert-dismissible fade show" role="alert">
+        保存しました
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
     <?php endif; ?>
     <?php if ($errors): ?>
-      <div class="card" style="border-color:#ef4444;">
-        <?= htmlspecialchars(implode("\n", $errors), ENT_QUOTES, 'UTF-8') ?>
+      <div class="alert alert-danger" role="alert">
+        <?= nl2br(htmlspecialchars(implode("\n", $errors), ENT_QUOTES, 'UTF-8')) ?>
       </div>
     <?php endif; ?>
 
-    <form method="post" action="">
-      <?php csrf_field(); ?>
-      <div style="display:grid; gap:12px; max-width:480px;">
-        <label>名前<span style="color:#ef4444;">*</span><br>
-          <input type="text" name="name" value="<?= htmlspecialchars($values['name'], ENT_QUOTES, 'UTF-8') ?>" required>
-        </label>
-        <label>カテゴリ<br>
-          <input type="text" name="category" list="tag-category-list" value="<?= htmlspecialchars($values['category'], ENT_QUOTES, 'UTF-8') ?>" placeholder="例: 渡航, 給与, 住居">
-        </label>
-        <datalist id="tag-category-list">
-          <?php foreach ($categoryOptions as $cat): ?>
-            <option value="<?= htmlspecialchars((string)$cat, ENT_QUOTES, 'UTF-8') ?>"></option>
-          <?php endforeach; ?>
-        </datalist>
-        <label>並び順<br>
-          <input type="number" name="sort_order" value="<?= (int)$values['sort_order'] ?>">
-        </label>
-        <?php if ($isEdit && $slug !== ''): ?>
-          <p>スラッグ: <code><?= htmlspecialchars($slug, ENT_QUOTES, 'UTF-8') ?></code></p>
-        <?php endif; ?>
-        <div style="display:flex; gap:8px;">
-          <button type="submit">保存</button>
-          <a href="/admin/tags/" class="button">一覧に戻る</a>
-        </div>
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <form method="post" action="" class="needs-validation" novalidate>
+          <?php csrf_field(); ?>
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label" for="name">名前<span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="name" name="name" value="<?= htmlspecialchars($values['name'], ENT_QUOTES, 'UTF-8') ?>" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="sort_order">並び順</label>
+              <input type="number" class="form-control" id="sort_order" name="sort_order" value="<?= (int)$values['sort_order'] ?>">
+            </div>
+            <div class="col-md-12">
+              <label class="form-label" for="category">カテゴリ</label>
+              <input type="text" class="form-control" id="category" name="category" list="tag-category-list" value="<?= htmlspecialchars($values['category'], ENT_QUOTES, 'UTF-8') ?>" placeholder="例: 渡航, 給与, 住居">
+              <datalist id="tag-category-list">
+                <?php foreach ($categoryOptions as $cat): ?>
+                  <option value="<?= htmlspecialchars((string)$cat, ENT_QUOTES, 'UTF-8') ?>"></option>
+                <?php endforeach; ?>
+              </datalist>
+            </div>
+            <?php if ($isEdit && $slug !== ''): ?>
+              <div class="col-md-12">
+                <label class="form-label">スラッグ</label>
+                <p class="mb-0"><code><?= htmlspecialchars($slug, ENT_QUOTES, 'UTF-8') ?></code></p>
+              </div>
+            <?php endif; ?>
+          </div>
+          <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary">保存</button>
+            <a href="/admin/tags/" class="btn btn-outline-secondary">一覧に戻る</a>
+          </div>
+        </form>
       </div>
-    </form>
+    </div>
     <?php
 });

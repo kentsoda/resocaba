@@ -102,51 +102,60 @@ renderLayout('FAQ 編集/新規', function () {
         }
     }
     ?>
-    <h1>FAQ <?= $isEdit ? '編集' : '新規作成' ?></h1>
+    <h1 class="mb-2">FAQ <?= $isEdit ? '編集' : '新規作成' ?></h1>
     <?php if ($isEdit): ?>
-      <p>ID: <?= (int)$id ?></p>
-      <p style="color:#6b7280;">作成日時: <?= htmlspecialchars($meta['created_at'], ENT_QUOTES, 'UTF-8') ?> / 更新日時: <?= htmlspecialchars($meta['updated_at'], ENT_QUOTES, 'UTF-8') ?></p>
+      <p class="text-muted">ID: <?= (int)$id ?></p>
+      <p class="text-muted small">作成日時: <?= htmlspecialchars($meta['created_at'], ENT_QUOTES, 'UTF-8') ?> / 更新日時: <?= htmlspecialchars($meta['updated_at'], ENT_QUOTES, 'UTF-8') ?></p>
     <?php endif; ?>
 
     <?php if ($errors): ?>
-      <div class="card" style="border-color:#ef4444; margin-bottom:16px;">
-        <?= htmlspecialchars(implode("\n", $errors), ENT_QUOTES, 'UTF-8') ?>
+      <div class="alert alert-danger" role="alert">
+        <?= nl2br(htmlspecialchars(implode("\n", $errors), ENT_QUOTES, 'UTF-8')) ?>
       </div>
     <?php endif; ?>
 
-    <form method="post" action="" style="display:grid; gap:16px; max-width:960px;">
-      <?php csrf_field(); ?>
-      <input type="hidden" name="action" value="save">
-      <label>質問<br>
-        <input type="text" name="question" value="<?= htmlspecialchars($values['question'], ENT_QUOTES, 'UTF-8') ?>" required>
-      </label>
-      <label>回答（HTML）<br>
-        <textarea class="js-wysiwyg" name="answer_html" rows="12"><?= htmlspecialchars($values['answer_html'], ENT_QUOTES, 'UTF-8') ?></textarea>
-      </label>
-      <label>表示順<br>
-        <input type="number" name="sort_order" value="<?= (int)$values['sort_order'] ?>">
-        <span style="font-size:12px; color:#64748b;">小さいほど上に表示されます</span>
-      </label>
-      <label>ステータス<br>
-        <select name="status">
-          <?php foreach (['published' => '公開', 'draft' => '下書き'] as $key => $label): ?>
-            <option value="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"<?= $values['status'] === $key ? ' selected' : '' ?>><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></option>
-          <?php endforeach; ?>
-        </select>
-      </label>
-      <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-        <button type="submit" class="button">保存する</button>
-        <a href="/admin/faqs/" class="button" style="background:#e2e8f0; color:#111;">一覧に戻る</a>
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <form method="post" action="" class="needs-validation" novalidate>
+          <?php csrf_field(); ?>
+          <input type="hidden" name="action" value="save">
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label" for="question">質問<span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="question" name="question" value="<?= htmlspecialchars($values['question'], ENT_QUOTES, 'UTF-8') ?>" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="status">ステータス</label>
+              <select class="form-select" id="status" name="status">
+                <?php foreach (['published' => '公開', 'draft' => '下書き'] as $key => $label): ?>
+                  <option value="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"<?= $values['status'] === $key ? ' selected' : '' ?>><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="sort_order">表示順</label>
+              <input type="number" class="form-control" id="sort_order" name="sort_order" value="<?= (int)$values['sort_order'] ?>">
+              <div class="form-text">小さいほど上に表示されます</div>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="answer_html">回答（HTML）</label>
+              <textarea class="form-control js-wysiwyg" id="answer_html" name="answer_html" rows="12"><?= htmlspecialchars($values['answer_html'], ENT_QUOTES, 'UTF-8') ?></textarea>
+            </div>
+          </div>
+          <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary">保存</button>
+            <a href="/admin/faqs/" class="btn btn-outline-secondary">一覧に戻る</a>
+            <?php if ($isEdit): ?>
+              <form method="post" class="d-inline" onsubmit="return confirm('本当に削除しますか？');">
+                <?php csrf_field(); ?>
+                <input type="hidden" name="action" value="delete">
+                <button type="submit" class="btn btn-outline-danger">削除</button>
+              </form>
+            <?php endif; ?>
+          </div>
+        </form>
       </div>
-    </form>
-
-    <?php if ($isEdit): ?>
-      <form method="post" action="" onsubmit="return confirm('本当に削除しますか？');" style="margin-top:16px;">
-        <?php csrf_field(); ?>
-        <input type="hidden" name="action" value="delete">
-        <button type="submit" class="button" style="background:#dc2626; color:#fff;">削除する</button>
-      </form>
-    <?php endif; ?>
+    </div>
     <?php
     enableWysiwyg('.js-wysiwyg');
 });

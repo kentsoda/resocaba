@@ -147,67 +147,75 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
 renderLayout($isEdit ? 'ブログ記事編集' : 'ブログ記事新規作成', function () use ($isEdit, $id, $errors, $values, $meta, $existingCategories) {
     ?>
-    <h1><?= $isEdit ? 'ブログ記事編集' : 'ブログ記事新規作成' ?></h1>
+    <h1 class="mb-2"><?= $isEdit ? 'ブログ記事編集' : 'ブログ記事新規作成' ?></h1>
     <?php if ($isEdit): ?>
-      <p style="color:#64748b;">ID: <?= (int)$id ?></p>
+      <p class="text-muted">ID: <?= (int)$id ?></p>
     <?php endif; ?>
     <?php if ($meta['updated_at']): ?>
-      <p style="color:#94a3b8; font-size:12px;">最終更新: <?= htmlspecialchars((string)$meta['updated_at'], ENT_QUOTES, 'UTF-8') ?></p>
+      <p class="text-muted small">最終更新: <?= htmlspecialchars((string)$meta['updated_at'], ENT_QUOTES, 'UTF-8') ?></p>
     <?php endif; ?>
     <?php if ($errors): ?>
-      <div class="card" style="border-color:#ef4444; color:#ef4444;"><?= htmlspecialchars(implode("\n", $errors), ENT_QUOTES, 'UTF-8') ?></div>
+      <div class="alert alert-danger" role="alert">
+        <?= nl2br(htmlspecialchars(implode("\n", $errors), ENT_QUOTES, 'UTF-8')) ?>
+      </div>
     <?php endif; ?>
 
-    <form method="post" action="" style="display:grid; gap:16px; max-width:960px;">
-      <?php csrf_field(); ?>
-      <div>
-        <label class="form-label">タイトル <span style="color:#ef4444;">*</span></label>
-        <input type="text" name="title" value="<?= htmlspecialchars($values['title'], ENT_QUOTES, 'UTF-8') ?>" required maxlength="255" />
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <form method="post" action="" class="needs-validation" novalidate>
+          <?php csrf_field(); ?>
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label" for="title">タイトル<span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="title" name="title" value="<?= htmlspecialchars($values['title'], ENT_QUOTES, 'UTF-8') ?>" required maxlength="255" />
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="status">ステータス</label>
+              <select class="form-select" id="status" name="status">
+                <?php foreach (['draft' => '下書き', 'published' => '公開', 'archived' => 'アーカイブ'] as $key => $label): ?>
+                  <option value="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"<?= $values['status'] === $key ? ' selected' : '' ?>><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="slug">スラッグ</label>
+              <input type="text" class="form-control" id="slug" name="slug" value="<?= htmlspecialchars($values['slug'], ENT_QUOTES, 'UTF-8') ?>" maxlength="191" placeholder="例: summer-campaign" />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="category">カテゴリ</label>
+              <input type="text" class="form-control" id="category" name="category" list="article-categories" value="<?= htmlspecialchars($values['category'], ENT_QUOTES, 'UTF-8') ?>" maxlength="100" placeholder="カテゴリを入力" />
+              <?php if ($existingCategories): ?>
+                <datalist id="article-categories">
+                  <?php foreach ($existingCategories as $cat): ?>
+                    <option value="<?= htmlspecialchars((string)$cat, ENT_QUOTES, 'UTF-8') ?>"></option>
+                  <?php endforeach; ?>
+                </datalist>
+              <?php endif; ?>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="published_at">公開日時</label>
+              <input type="datetime-local" class="form-control" id="published_at" name="published_at" value="<?= htmlspecialchars($values['published_at'], ENT_QUOTES, 'UTF-8') ?>" />
+              <div class="form-text">公開日時を設定すると公開予約できます。</div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="og_image_url">OGP画像URL</label>
+              <input type="url" class="form-control" id="og_image_url" name="og_image_url" value="<?= htmlspecialchars($values['og_image_url'], ENT_QUOTES, 'UTF-8') ?>" maxlength="512" placeholder="https://example.com/ogp.jpg" />
+            </div>
+            <div class="col-12">
+              <div id="og-image-preview" class="border rounded p-2 d-flex align-items-center justify-content-center" style="min-height:80px; background:#f8fafc;"></div>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="body_html">本文 HTML</label>
+              <textarea class="form-control js-wysiwyg" id="body_html" name="body_html" rows="16"><?= htmlspecialchars($values['body_html'], ENT_QUOTES, 'UTF-8') ?></textarea>
+            </div>
+          </div>
+          <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary">保存</button>
+            <a href="/admin/blog/index.php" class="btn btn-outline-secondary">一覧へ戻る</a>
+          </div>
+        </form>
       </div>
-      <div>
-        <label class="form-label">スラッグ</label>
-        <input type="text" name="slug" value="<?= htmlspecialchars($values['slug'], ENT_QUOTES, 'UTF-8') ?>" maxlength="191" placeholder="例: summer-campaign" />
-      </div>
-      <div>
-        <label class="form-label">カテゴリ</label>
-        <input type="text" name="category" list="article-categories" value="<?= htmlspecialchars($values['category'], ENT_QUOTES, 'UTF-8') ?>" maxlength="100" placeholder="カテゴリを入力" />
-        <?php if ($existingCategories): ?>
-          <datalist id="article-categories">
-            <?php foreach ($existingCategories as $cat): ?>
-              <option value="<?= htmlspecialchars((string)$cat, ENT_QUOTES, 'UTF-8') ?>"></option>
-            <?php endforeach; ?>
-          </datalist>
-        <?php endif; ?>
-      </div>
-      <div>
-        <label class="form-label">OGP画像URL</label>
-        <input type="url" name="og_image_url" value="<?= htmlspecialchars($values['og_image_url'], ENT_QUOTES, 'UTF-8') ?>" maxlength="512" placeholder="https://example.com/ogp.jpg" />
-        <div id="og-image-preview" style="margin-top:8px; padding:8px; border:1px solid #e2e8f0; border-radius:6px; min-height:80px; display:flex; align-items:center; justify-content:center; background:#f8fafc;"></div>
-      </div>
-      <div style="display:flex; gap:16px; flex-wrap:wrap;">
-        <div style="flex:1 1 200px;">
-          <label class="form-label">ステータス</label>
-          <select name="status">
-            <?php foreach (['draft' => '下書き', 'published' => '公開', 'archived' => 'アーカイブ'] as $key => $label): ?>
-              <option value="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"<?= $values['status'] === $key ? ' selected' : '' ?>><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></option>
-            <?php endforeach; ?>
-          </select>
-        </div>
-        <div style="flex:1 1 200px;">
-          <label class="form-label">公開日時</label>
-          <input type="datetime-local" name="published_at" value="<?= htmlspecialchars($values['published_at'], ENT_QUOTES, 'UTF-8') ?>" />
-          <small style="display:block; color:#64748b;">公開日時を設定すると公開予約できます。</small>
-        </div>
-      </div>
-      <div>
-        <label class="form-label">本文 HTML</label>
-        <textarea name="body_html" class="js-wysiwyg" rows="16"><?= htmlspecialchars($values['body_html'], ENT_QUOTES, 'UTF-8') ?></textarea>
-      </div>
-      <div style="display:flex; gap:12px;">
-        <button type="submit" class="button" style="background:#2563eb; color:#fff;">保存する</button>
-        <a href="/admin/blog/index.php" class="button" style="background:#e2e8f0; color:#111827;">一覧へ戻る</a>
-      </div>
-    </form>
+    </div>
 
     <script>
       (function () {

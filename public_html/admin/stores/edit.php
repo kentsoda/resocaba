@@ -226,93 +226,111 @@ renderLayout('店舗 編集/新規', function () {
     }
 
     ?>
-    <h1>店舗 編集/新規</h1>
+    <h1 class="mb-2">店舗 <?= $isEdit ? '編集' : '新規作成' ?></h1>
     <?php if ($isEdit): ?>
-      <p>ID: <?= (int)$id ?></p>
+      <p class="text-muted">ID: <?= (int)$id ?></p>
     <?php endif; ?>
     <?php if ($saved): ?>
-      <div class="card" style="border-color:#22c55e;">保存しました。</div>
+      <div class="alert alert-success alert-dismissible fade show" role="alert">
+        保存しました
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
     <?php endif; ?>
     <?php if ($errors): ?>
-      <div class="card" style="border-color:#ef4444;">
-        <?= htmlspecialchars(implode("\n", $errors), ENT_QUOTES, 'UTF-8') ?>
+      <div class="alert alert-danger" role="alert">
+        <?= nl2br(htmlspecialchars(implode("\n", $errors), ENT_QUOTES, 'UTF-8')) ?>
       </div>
     <?php endif; ?>
 
     <?php if ($isEdit): ?>
-      <p><a href="/admin/stores/images.php?store_id=<?= (int)$id ?>">画像の並び替え・削除はこちら</a></p>
+      <p><a href="/admin/stores/images.php?store_id=<?= (int)$id ?>" class="btn btn-outline-info btn-sm">画像の並び替え・削除</a></p>
     <?php endif; ?>
 
-    <form method="post" action="" style="max-width:960px; display:grid; gap:16px;">
-      <?php csrf_field(); ?>
-      <label>店舗名（必須）<br>
-        <input type="text" name="name" value="<?= htmlspecialchars($values['name'], ENT_QUOTES, 'UTF-8') ?>" required>
-      </label>
-      <label>スラッグ<br>
-        <input type="text" name="slug" value="<?= htmlspecialchars($values['slug'], ENT_QUOTES, 'UTF-8') ?>" placeholder="半角英数字・ハイフン">
-      </label>
-      <label>カテゴリ<br>
-        <select name="category">
-          <?php foreach ($categoryOptions as $key => $label): ?>
-            <option value="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"<?= $values['category'] === $key ? ' selected' : '' ?>><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></option>
-          <?php endforeach; ?>
-        </select>
-      </label>
-      <label>ロゴURL<br>
-        <input type="url" name="logo_url" value="<?= htmlspecialchars($values['logo_url'], ENT_QUOTES, 'UTF-8') ?>">
-      </label>
-      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">
-        <label>国<br>
-          <input type="text" name="country" value="<?= htmlspecialchars($values['country'], ENT_QUOTES, 'UTF-8') ?>">
-        </label>
-        <label>地域・都道府県<br>
-          <input type="text" name="region_prefecture" value="<?= htmlspecialchars($values['region_prefecture'], ENT_QUOTES, 'UTF-8') ?>">
-        </label>
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <form method="post" action="" class="needs-validation" novalidate>
+          <?php csrf_field(); ?>
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label" for="name">店舗名<span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="name" name="name" value="<?= htmlspecialchars($values['name'], ENT_QUOTES, 'UTF-8') ?>" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="category">カテゴリ</label>
+              <select class="form-select" id="category" name="category">
+                <?php foreach ($categoryOptions as $key => $label): ?>
+                  <option value="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"<?= $values['category'] === $key ? ' selected' : '' ?>><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="slug">スラッグ</label>
+              <input type="text" class="form-control" id="slug" name="slug" value="<?= htmlspecialchars($values['slug'], ENT_QUOTES, 'UTF-8') ?>" placeholder="半角英数字・ハイフン">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="logo_url">ロゴURL</label>
+              <input type="url" class="form-control" id="logo_url" name="logo_url" value="<?= htmlspecialchars($values['logo_url'], ENT_QUOTES, 'UTF-8') ?>">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="country">国</label>
+              <input type="text" class="form-control" id="country" name="country" value="<?= htmlspecialchars($values['country'], ENT_QUOTES, 'UTF-8') ?>">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="region_prefecture">地域・都道府県</label>
+              <input type="text" class="form-control" id="region_prefecture" name="region_prefecture" value="<?= htmlspecialchars($values['region_prefecture'], ENT_QUOTES, 'UTF-8') ?>">
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="address">住所</label>
+              <input type="text" class="form-control" id="address" name="address" value="<?= htmlspecialchars($values['address'], ENT_QUOTES, 'UTF-8') ?>">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="phone_domestic">電話番号（国内）</label>
+              <input type="text" class="form-control" id="phone_domestic" name="phone_domestic" value="<?= htmlspecialchars($values['phone_domestic'], ENT_QUOTES, 'UTF-8') ?>">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="phone_international">電話番号（海外）</label>
+              <input type="text" class="form-control" id="phone_international" name="phone_international" value="<?= htmlspecialchars($values['phone_international'], ENT_QUOTES, 'UTF-8') ?>">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="business_hours_start">営業時間（開始）</label>
+              <select class="form-select" id="business_hours_start" name="business_hours_start">
+                <?php foreach ($startHourOptions as $key => $label): ?>
+                  <option value="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"<?= ($values['business_hours_start'] !== null ? (string)$values['business_hours_start'] : '') === (string)$key ? ' selected' : '' ?>><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="business_hours_end">営業時間（終了）</label>
+              <select class="form-select" id="business_hours_end" name="business_hours_end">
+                <?php foreach ($endHourOptions as $key => $label): ?>
+                  <option value="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"<?= $values['business_hours_end'] === $key ? ' selected' : '' ?>><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="holiday">店休日</label>
+              <select class="form-select" id="holiday" name="holiday[]" multiple size="<?= count($holidayOptions) ?>" style="min-height:140px;">
+                <?php foreach ($holidayOptions as $opt): ?>
+                  <option value="<?= htmlspecialchars($opt, ENT_QUOTES, 'UTF-8') ?>"<?= in_array($opt, $values['holiday_list'], true) ? ' selected' : '' ?>><?= htmlspecialchars($opt, ENT_QUOTES, 'UTF-8') ?></option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="site_url">サイトURL</label>
+              <input type="url" class="form-control" id="site_url" name="site_url" value="<?= htmlspecialchars($values['site_url'], ENT_QUOTES, 'UTF-8') ?>">
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="description_html">説明（HTML）</label>
+              <textarea class="form-control js-wysiwyg" id="description_html" name="description_html" rows="12"><?= htmlspecialchars($values['description_html'], ENT_QUOTES, 'UTF-8') ?></textarea>
+            </div>
+          </div>
+          <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary">保存</button>
+            <a href="/admin/stores/" class="btn btn-outline-secondary">一覧に戻る</a>
+          </div>
+        </form>
       </div>
-      <label>住所<br>
-        <input type="text" name="address" value="<?= htmlspecialchars($values['address'], ENT_QUOTES, 'UTF-8') ?>">
-      </label>
-      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">
-        <label>電話番号（国内）<br>
-          <input type="text" name="phone_domestic" value="<?= htmlspecialchars($values['phone_domestic'], ENT_QUOTES, 'UTF-8') ?>">
-        </label>
-        <label>電話番号（海外）<br>
-          <input type="text" name="phone_international" value="<?= htmlspecialchars($values['phone_international'], ENT_QUOTES, 'UTF-8') ?>">
-        </label>
-      </div>
-      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">
-        <label>営業時間（開始）<br>
-          <select name="business_hours_start">
-            <?php foreach ($startHourOptions as $key => $label): ?>
-              <option value="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"<?= ($values['business_hours_start'] !== null ? (string)$values['business_hours_start'] : '') === (string)$key ? ' selected' : '' ?>><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></option>
-            <?php endforeach; ?>
-          </select>
-        </label>
-        <label>営業時間（終了）<br>
-          <select name="business_hours_end">
-            <?php foreach ($endHourOptions as $key => $label): ?>
-              <option value="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"<?= $values['business_hours_end'] === $key ? ' selected' : '' ?>><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></option>
-            <?php endforeach; ?>
-          </select>
-        </label>
-      </div>
-      <label>店休日<br>
-        <select name="holiday[]" multiple size="<?= count($holidayOptions) ?>" style="min-height:140px;">
-          <?php foreach ($holidayOptions as $opt): ?>
-            <option value="<?= htmlspecialchars($opt, ENT_QUOTES, 'UTF-8') ?>"<?= in_array($opt, $values['holiday_list'], true) ? ' selected' : '' ?>><?= htmlspecialchars($opt, ENT_QUOTES, 'UTF-8') ?></option>
-          <?php endforeach; ?>
-        </select>
-      </label>
-      <label>サイトURL<br>
-        <input type="url" name="site_url" value="<?= htmlspecialchars($values['site_url'], ENT_QUOTES, 'UTF-8') ?>">
-      </label>
-      <label>説明（HTML）<br>
-        <textarea class="js-wysiwyg" name="description_html" rows="12"><?= htmlspecialchars($values['description_html'], ENT_QUOTES, 'UTF-8') ?></textarea>
-      </label>
-      <div>
-        <button type="submit" class="button">保存する</button>
-      </div>
-    </form>
+    </div>
     <?php
     enableWysiwyg();
 });

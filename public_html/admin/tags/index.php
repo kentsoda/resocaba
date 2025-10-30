@@ -98,23 +98,40 @@ if ($pdo) {
 
 renderLayout('タグ一覧', function () use ($rows, $q, $categoryFilter, $sortKey, $categories) {
     ?>
-    <h1>タグ一覧</h1>
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+      <h1 class="mb-0">タグ一覧</h1>
+      <a href="/admin/tags/edit.php" class="btn btn-success">新規作成</a>
+    </div>
+
     <?php if (isset($_GET['deleted'])): ?>
-      <div class="card" style="border-color:#f97316;">タグを削除しました</div>
+      <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        タグを削除しました
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
     <?php elseif (isset($_GET['sort_updated'])): ?>
-      <div class="card" style="border-color:#22c55e;">並び順を更新しました</div>
+      <div class="alert alert-success alert-dismissible fade show" role="alert">
+        並び順を更新しました
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
     <?php elseif (isset($_GET['error'])): ?>
-      <div class="card" style="border-color:#ef4444;">処理に失敗しました</div>
+      <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        処理に失敗しました
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
     <?php endif; ?>
 
-    <form method="get" class="filters" style="margin-bottom:16px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-      <input type="text" name="q" value="<?= htmlspecialchars($q, ENT_QUOTES, 'UTF-8') ?>" placeholder="名前・スラッグ検索" />
-      <select name="category">
-        <option value="">すべてのカテゴリ</option>
-        <?php foreach ($categories as $cat): ?>
-          <option value="<?= htmlspecialchars((string)$cat, ENT_QUOTES, 'UTF-8') ?>"<?= $categoryFilter === (string)$cat ? ' selected' : '' ?>><?= htmlspecialchars((string)$cat, ENT_QUOTES, 'UTF-8') ?></option>
-        <?php endforeach; ?>
-      </select>
+    <form method="get" class="row g-2 mb-4">
+      <div class="col-md-3">
+        <input type="text" name="q" class="form-control" value="<?= htmlspecialchars($q, ENT_QUOTES, 'UTF-8') ?>" placeholder="名前・スラッグ検索" />
+      </div>
+      <div class="col-md-3">
+        <select name="category" class="form-select">
+          <option value="">すべてのカテゴリ</option>
+          <?php foreach ($categories as $cat): ?>
+            <option value="<?= htmlspecialchars((string)$cat, ENT_QUOTES, 'UTF-8') ?>"<?= $categoryFilter === (string)$cat ? ' selected' : '' ?>><?= htmlspecialchars((string)$cat, ENT_QUOTES, 'UTF-8') ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
       <?php $sortLabels = [
         'sort_order' => '並び順',
         'name_asc' => '名前(昇順)',
@@ -122,13 +139,16 @@ renderLayout('タグ一覧', function () use ($rows, $q, $categoryFilter, $sortK
         'created_desc' => '作成日(新しい順)',
         'created_asc' => '作成日(古い順)',
       ]; ?>
-      <select name="sort">
-        <?php foreach ($sortLabels as $key => $label): ?>
-          <option value="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"<?= $sortKey === $key ? ' selected' : '' ?>><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></option>
-        <?php endforeach; ?>
-      </select>
-      <button type="submit">検索</button>
-      <a href="/admin/tags/edit.php" class="button" style="margin-left:auto;">新規作成</a>
+      <div class="col-md-3">
+        <select name="sort" class="form-select">
+          <?php foreach ($sortLabels as $key => $label): ?>
+            <option value="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"<?= $sortKey === $key ? ' selected' : '' ?>><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <button type="submit" class="btn btn-primary w-100">検索</button>
+      </div>
     </form>
 
     <form id="sort-form" method="post" action="" style="margin:0;">
@@ -136,22 +156,25 @@ renderLayout('タグ一覧', function () use ($rows, $q, $categoryFilter, $sortK
       <input type="hidden" name="action" value="sort">
     </form>
 
-    <div class="table-wrap" style="margin-bottom:16px;">
-      <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse; width:100%; background:#fff;">
-          <thead>
+    <div class="card shadow-sm">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
             <tr>
-              <th style="width:40px;"></th>
-              <th style="width:80px;">ID</th>
-              <th>名前</th>
-              <th>カテゴリ</th>
-              <th>スラッグ</th>
-              <th style="width:120px;">並び順</th>
-              <th style="width:160px;">操作</th>
+              <th scope="col" style="width:40px;"></th>
+              <th scope="col" style="width:80px;">ID</th>
+              <th scope="col">名前</th>
+              <th scope="col">カテゴリ</th>
+              <th scope="col">スラッグ</th>
+              <th scope="col" style="width:120px;">並び順</th>
+              <th scope="col" class="text-end" style="width:180px;">操作</th>
             </tr>
           </thead>
           <tbody id="sortable-tbody">
             <?php if (!$rows): ?>
-              <tr><td colspan="7" style="text-align:center; color:#64748b;">タグがありません</td></tr>
+              <tr>
+                <td colspan="7" class="text-center text-muted py-4">タグがありません</td>
+              </tr>
             <?php else: ?>
               <?php foreach ($rows as $row): $id = (int)$row['id']; ?>
                 <tr data-id="<?= $id ?>" data-sort-order="<?= (int)($row['sort_order'] ?? 0) ?>">
@@ -162,25 +185,28 @@ renderLayout('タグ一覧', function () use ($rows, $q, $categoryFilter, $sortK
                   <td><?= htmlspecialchars((string)$row['name'], ENT_QUOTES, 'UTF-8') ?></td>
                   <td><?= htmlspecialchars((string)($row['category'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
                   <td><?= htmlspecialchars((string)($row['slug'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
-                  <td><input type="number" name="orders[<?= $id ?>]" value="<?= (int)($row['sort_order'] ?? 0) ?>" style="width:80px;" form="sort-form" class="sort-order-input"></td>
-                  <td>
-                    <a href="/admin/tags/edit.php?id=<?= $id ?>">編集</a>
-                    <form method="post" action="" style="display:inline; margin-left:8px;" onsubmit="return confirm('削除してよろしいですか？');">
-                      <?php csrf_field(); ?>
-                      <input type="hidden" name="action" value="delete">
-                      <input type="hidden" name="id" value="<?= $id ?>">
-                      <button type="submit" style="background:none; border:none; color:#ef4444; cursor:pointer;">削除</button>
-                    </form>
+                  <td><input type="number" name="orders[<?= $id ?>]" value="<?= (int)($row['sort_order'] ?? 0) ?>" style="width:80px;" form="sort-form" class="sort-order-input form-control form-control-sm"></td>
+                  <td class="text-end">
+                    <div class="btn-group btn-group-sm" role="group">
+                      <a href="/admin/tags/edit.php?id=<?= $id ?>" class="btn btn-outline-success">編集</a>
+                      <form method="post" class="d-inline" onsubmit="return confirm('削除してよろしいですか？');">
+                        <?php csrf_field(); ?>
+                        <input type="hidden" name="action" value="delete">
+                        <input type="hidden" name="id" value="<?= $id ?>">
+                        <button type="submit" class="btn btn-outline-danger">削除</button>
+                      </form>
+                    </div>
                   </td>
                 </tr>
               <?php endforeach; ?>
             <?php endif; ?>
           </tbody>
         </table>
+      </div>
     </div>
     <?php if ($rows): ?>
-      <div style="margin-top:12px;">
-        <button type="submit" form="sort-form">並び順を保存</button>
+      <div class="mt-3">
+        <button type="submit" form="sort-form" class="btn btn-primary">並び順を保存</button>
       </div>
     <?php endif; ?>
 

@@ -62,45 +62,52 @@ renderLayout('店舗一覧', function () {
     $totalPages = max(1, (int)ceil($total / $perPage));
 
     ?>
-    <h1>店舗一覧</h1>
-    <form method="get" class="filters" style="margin-bottom:16px; display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
-      <label style="display:flex; flex-direction:column; gap:4px;">
-        <span>キーワード</span>
-        <input type="text" name="q" value="<?= htmlspecialchars($q, ENT_QUOTES, 'UTF-8') ?>" placeholder="店舗名・国・地域で検索">
-      </label>
-      <label style="display:flex; flex-direction:column; gap:4px;">
-        <span>カテゴリ</span>
-        <select name="category">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+      <h1 class="mb-0">店舗一覧</h1>
+      <a href="/admin/stores/edit.php" class="btn btn-success">新規登録</a>
+    </div>
+
+    <form method="get" class="row g-2 mb-4">
+      <div class="col-md-4">
+        <label for="filter-q" class="form-label">キーワード</label>
+        <input type="text" class="form-control" id="filter-q" name="q" value="<?= htmlspecialchars($q, ENT_QUOTES, 'UTF-8') ?>" placeholder="店舗名・国・地域で検索">
+      </div>
+      <div class="col-md-3">
+        <label for="filter-category" class="form-label">カテゴリ</label>
+        <select name="category" class="form-select" id="filter-category">
           <?php foreach ($categoryOptions as $opt): $label = $opt === '' ? 'すべて' : $opt; ?>
             <option value="<?= htmlspecialchars($opt, ENT_QUOTES, 'UTF-8') ?>"<?= $category === $opt ? ' selected' : '' ?>><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></option>
           <?php endforeach; ?>
         </select>
-      </label>
-      <div style="display:flex; gap:8px;">
-        <button type="submit">検索</button>
-        <a href="/admin/stores/edit.php" class="button" style="align-self:flex-end;">新規登録</a>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">&nbsp;</label>
+        <button type="submit" class="btn btn-primary w-100">検索</button>
       </div>
     </form>
 
-    <div class="table-wrap">
-      <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse; width:100%; background:#fff;">
-        <thead>
-          <tr>
-            <th style="width:60px;">ID</th>
-            <th>店舗名</th>
-            <th style="width:120px;">カテゴリ</th>
-            <th style="width:220px;">所在地</th>
-            <th style="width:160px;">営業時間</th>
-            <th style="width:160px;">店休日</th>
-            <th style="width:180px;">更新日時</th>
-            <th style="width:140px;">操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <?php if (!$rows): ?>
-            <tr><td colspan="8" style="text-align:center; color:#64748b;">該当する店舗がありません</td></tr>
-          <?php else: ?>
-            <?php foreach ($rows as $row):
+    <div class="card shadow-sm">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th scope="col" style="width:60px;">ID</th>
+              <th scope="col">店舗名</th>
+              <th scope="col" style="width:120px;">カテゴリ</th>
+              <th scope="col" style="width:220px;">所在地</th>
+              <th scope="col" style="width:160px;">営業時間</th>
+              <th scope="col" style="width:160px;">店休日</th>
+              <th scope="col" style="width:180px;">更新日時</th>
+              <th scope="col" class="text-end" style="width:160px;">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php if (!$rows): ?>
+              <tr>
+                <td colspan="8" class="text-center text-muted py-4">該当する店舗がありません</td>
+              </tr>
+            <?php else: ?>
+              <?php foreach ($rows as $row):
                 $id = (int)$row['id'];
                 $locationParts = [];
                 if (!empty($row['country'])) { $locationParts[] = (string)$row['country']; }
@@ -135,10 +142,10 @@ renderLayout('店舗一覧', function () {
               <tr>
                 <td><?= $id ?></td>
                 <td>
-                  <div style="display:flex; flex-direction:column;">
+                  <div>
                     <strong><?= htmlspecialchars((string)$row['name'], ENT_QUOTES, 'UTF-8') ?></strong>
                     <?php if (!empty($row['site_url'])): ?>
-                      <a href="<?= htmlspecialchars((string)$row['site_url'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener" style="font-size:12px; color:#2563eb;">サイトを開く</a>
+                      <div><a href="<?= htmlspecialchars((string)$row['site_url'], ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener" class="small text-primary text-decoration-none">サイトを開く</a></div>
                     <?php endif; ?>
                   </div>
                 </td>
@@ -147,9 +154,11 @@ renderLayout('店舗一覧', function () {
                 <td><?= htmlspecialchars($hours, ENT_QUOTES, 'UTF-8') ?></td>
                 <td><?= htmlspecialchars($holiday, ENT_QUOTES, 'UTF-8') ?></td>
                 <td><?= htmlspecialchars((string)($row['updated_at'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
-                <td>
-                  <a href="/admin/stores/edit.php?id=<?= $id ?>">編集</a> |
-                  <a href="/admin/stores/images.php?store_id=<?= $id ?>">画像</a>
+                <td class="text-end">
+                  <div class="btn-group btn-group-sm" role="group">
+                    <a href="/admin/stores/edit.php?id=<?= $id ?>" class="btn btn-outline-primary">編集</a>
+                    <a href="/admin/stores/images.php?store_id=<?= $id ?>" class="btn btn-outline-secondary">画像</a>
+                  </div>
                 </td>
               </tr>
             <?php endforeach; ?>
@@ -159,15 +168,19 @@ renderLayout('店舗一覧', function () {
     </div>
 
     <?php if ($totalPages > 1): ?>
-      <div class="pagination" style="margin-top:12px; display:flex; gap:6px; flex-wrap:wrap;">
-        <?php $baseParams = $_GET; for ($p = 1; $p <= $totalPages; $p++): $baseParams['page'] = $p; $href = '/admin/stores/?' . http_build_query($baseParams); ?>
-          <?php if ($p === $page): ?>
-            <span style="padding:4px 8px; background:#1e293b; color:#fff; border-radius:4px;"><?= $p ?></span>
-          <?php else: ?>
-            <a href="<?= htmlspecialchars($href, ENT_QUOTES, 'UTF-8') ?>" style="padding:4px 8px; background:#e2e8f0; color:#111; border-radius:4px; text-decoration:none;"><?= $p ?></a>
-          <?php endif; ?>
-        <?php endfor; ?>
-      </div>
+      <nav aria-label="店舗ページネーション" class="mt-4">
+        <ul class="pagination flex-wrap">
+          <?php $baseParams = $_GET; for ($p = 1; $p <= $totalPages; $p++): $baseParams['page'] = $p; $href = '/admin/stores/?' . http_build_query($baseParams); ?>
+            <li class="page-item<?= $p === $page ? ' active' : '' ?>">
+              <?php if ($p === $page): ?>
+                <span class="page-link"><?= $p ?></span>
+              <?php else: ?>
+                <a class="page-link" href="<?= htmlspecialchars($href, ENT_QUOTES, 'UTF-8') ?>"><?= $p ?></a>
+              <?php endif; ?>
+            </li>
+          <?php endfor; ?>
+        </ul>
+      </nav>
     <?php endif; ?>
     <?php
 });
