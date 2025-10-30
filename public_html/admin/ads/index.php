@@ -100,94 +100,106 @@ renderLayout('広告バナー一覧', function () use ($pdo) {
         'boundary' => 'これ以上移動できません。',
         'error' => '操作に失敗しました。',
     ];
+    $noticeClasses = [
+        'saved' => 'alert-success',
+        'created' => 'alert-success',
+        'deleted' => 'alert-success',
+        'toggled' => 'alert-success',
+        'reordered' => 'alert-success',
+        'boundary' => 'alert-warning',
+        'error' => 'alert-danger',
+    ];
     $currentMessage = $messages[$noticeKey] ?? '';
+    $currentClass = $noticeClasses[$noticeKey] ?? 'alert-info';
     ?>
-    <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:16px;">
-        <h1 style="margin:0;">広告バナー一覧</h1>
-        <a href="/admin/ads/edit.php" class="button">新規作成</a>
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+      <h1 class="mb-0">広告バナー一覧</h1>
+      <a href="/admin/ads/edit.php" class="btn btn-success">新規作成</a>
     </div>
 
     <?php if ($currentMessage): ?>
-        <div class="card" style="border-color:#3b82f6; margin-bottom:16px;">
-            <?= htmlspecialchars($currentMessage, ENT_QUOTES, 'UTF-8') ?>
-        </div>
+      <div class="alert <?= htmlspecialchars($currentClass, ENT_QUOTES, 'UTF-8') ?>" role="alert">
+        <?= htmlspecialchars($currentMessage, ENT_QUOTES, 'UTF-8') ?>
+      </div>
     <?php endif; ?>
 
-    <div class="table-wrap">
-        <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse; width:100%; background:#fff;">
-            <thead>
-                <tr>
-                    <th style="width:80px;">表示順</th>
-                    <th style="width:60px;">ID</th>
-                    <th>画像</th>
-                    <th>リンクURL</th>
-                    <th style="width:80px;">target</th>
-                    <th style="width:80px;">表示</th>
-                    <th style="width:200px;">操作</th>
-                </tr>
-            </thead>
-            <tbody>
+    <div class="card shadow-sm">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th scope="col" style="width:90px;">表示順</th>
+              <th scope="col" style="width:60px;">ID</th>
+              <th scope="col">画像</th>
+              <th scope="col">リンクURL</th>
+              <th scope="col" style="width:90px;">target</th>
+              <th scope="col" style="width:90px;">表示</th>
+              <th scope="col" class="text-end" style="width:220px;">操作</th>
+            </tr>
+          </thead>
+          <tbody>
             <?php if (!$ads): ?>
-                <tr>
-                    <td colspan="7" style="text-align:center; color:#64748b;">広告バナーが登録されていません。</td>
-                </tr>
+              <tr>
+                <td colspan="7" class="text-center text-muted py-4">広告バナーが登録されていません。</td>
+              </tr>
             <?php else: ?>
-                <?php foreach ($ads as $index => $ad): $id = (int)$ad['id']; ?>
-                    <tr>
-                        <td><?= (int)$ad['sort_order'] ?></td>
-                        <td><?= $id ?></td>
-                        <td>
-                            <?php if (!empty($ad['image_url'])): ?>
-                                <img src="<?= htmlspecialchars($ad['image_url'], ENT_QUOTES, 'UTF-8') ?>" alt="広告画像" style="max-width:160px; max-height:80px; object-fit:contain;">
-                            <?php endif; ?>
-                        </td>
-                        <td style="word-break:break-all;">
-                            <?php if (!empty($ad['link_url'])): ?>
-                                <a href="<?= htmlspecialchars($ad['link_url'], ENT_QUOTES, 'UTF-8') ?>" target="<?= ((int)$ad['target_blank'] === 1) ? '_blank' : '_self' ?>" rel="noopener"><?= htmlspecialchars($ad['link_url'], ENT_QUOTES, 'UTF-8') ?></a>
-                            <?php endif; ?>
-                        </td>
-                        <td><?= ((int)$ad['target_blank'] === 1) ? '_blank' : '_self' ?></td>
-                        <td>
-                            <span style="display:inline-block; padding:2px 6px; border-radius:4px; background:<?= ((int)$ad['is_active'] === 1) ? '#dcfce7' : '#fee2e2' ?>; color:<?= ((int)$ad['is_active'] === 1) ? '#166534' : '#991b1b' ?>;">
-                                <?= ((int)$ad['is_active'] === 1) ? '表示' : '非表示' ?>
-                            </span>
-                        </td>
-                        <td>
-                            <div style="display:flex; flex-wrap:wrap; gap:6px;">
-                                <form method="post" style="display:inline;">
-                                    <?php csrf_field(); ?>
-                                    <input type="hidden" name="action" value="move_up">
-                                    <input type="hidden" name="id" value="<?= $id ?>">
-                                    <button type="submit" title="上へ" style="padding:4px 8px;">↑</button>
-                                </form>
-                                <form method="post" style="display:inline;">
-                                    <?php csrf_field(); ?>
-                                    <input type="hidden" name="action" value="move_down">
-                                    <input type="hidden" name="id" value="<?= $id ?>">
-                                    <button type="submit" title="下へ" style="padding:4px 8px;">↓</button>
-                                </form>
-                                <form method="post" style="display:inline;">
-                                    <?php csrf_field(); ?>
-                                    <input type="hidden" name="action" value="toggle_active">
-                                    <input type="hidden" name="id" value="<?= $id ?>">
-                                    <button type="submit" style="padding:4px 8px;">
-                                        <?= ((int)$ad['is_active'] === 1) ? '非表示にする' : '表示にする' ?>
-                                    </button>
-                                </form>
-                                <a href="/admin/ads/edit.php?id=<?= $id ?>" class="button" style="padding:4px 8px;">編集</a>
-                                <form method="post" style="display:inline;" onsubmit="return confirm('広告を削除しますか？');">
-                                    <?php csrf_field(); ?>
-                                    <input type="hidden" name="action" value="delete">
-                                    <input type="hidden" name="id" value="<?= $id ?>">
-                                    <button type="submit" style="padding:4px 8px; background:#fee2e2; color:#991b1b;">削除</button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
+              <?php foreach ($ads as $index => $ad): $id = (int)$ad['id']; ?>
+                <tr>
+                  <td><?= (int)$ad['sort_order'] ?></td>
+                  <td><?= $id ?></td>
+                  <td>
+                    <?php if (!empty($ad['image_url'])): ?>
+                      <img src="<?= htmlspecialchars($ad['image_url'], ENT_QUOTES, 'UTF-8') ?>" alt="広告画像" class="img-fluid" style="max-width:180px; max-height:100px; object-fit:contain;">
+                    <?php endif; ?>
+                  </td>
+                  <td class="text-break">
+                    <?php if (!empty($ad['link_url'])): ?>
+                      <a href="<?= htmlspecialchars($ad['link_url'], ENT_QUOTES, 'UTF-8') ?>" target="<?= ((int)$ad['target_blank'] === 1) ? '_blank' : '_self' ?>" rel="noopener"><?= htmlspecialchars($ad['link_url'], ENT_QUOTES, 'UTF-8') ?></a>
+                    <?php endif; ?>
+                  </td>
+                  <td><?= ((int)$ad['target_blank'] === 1) ? '_blank' : '_self' ?></td>
+                  <td>
+                    <span class="badge bg-<?= ((int)$ad['is_active'] === 1) ? 'success' : 'danger' ?>">
+                      <?= ((int)$ad['is_active'] === 1) ? '表示' : '非表示' ?>
+                    </span>
+                  </td>
+                  <td class="text-end">
+                    <div class="btn-group btn-group-sm" role="group">
+                      <form method="post" class="d-inline">
+                        <?php csrf_field(); ?>
+                        <input type="hidden" name="action" value="move_up">
+                        <input type="hidden" name="id" value="<?= $id ?>">
+                        <button type="submit" class="btn btn-outline-secondary" title="上へ">↑</button>
+                      </form>
+                      <form method="post" class="d-inline">
+                        <?php csrf_field(); ?>
+                        <input type="hidden" name="action" value="move_down">
+                        <input type="hidden" name="id" value="<?= $id ?>">
+                        <button type="submit" class="btn btn-outline-secondary" title="下へ">↓</button>
+                      </form>
+                      <form method="post" class="d-inline">
+                        <?php csrf_field(); ?>
+                        <input type="hidden" name="action" value="toggle_active">
+                        <input type="hidden" name="id" value="<?= $id ?>">
+                        <button type="submit" class="btn btn-outline-primary">
+                          <?= ((int)$ad['is_active'] === 1) ? '非表示にする' : '表示にする' ?>
+                        </button>
+                      </form>
+                      <a href="/admin/ads/edit.php?id=<?= $id ?>" class="btn btn-outline-success">編集</a>
+                      <form method="post" class="d-inline" onsubmit="return confirm('広告を削除しますか？');">
+                        <?php csrf_field(); ?>
+                        <input type="hidden" name="action" value="delete">
+                        <input type="hidden" name="id" value="<?= $id ?>">
+                        <button type="submit" class="btn btn-outline-danger">削除</button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
             <?php endif; ?>
-            </tbody>
+          </tbody>
         </table>
+      </div>
     </div>
     <?php
 });

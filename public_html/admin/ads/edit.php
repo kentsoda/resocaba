@@ -116,57 +116,65 @@ renderLayout('広告バナー編集', function () use ($isEdit, $values, $errors
         return;
     }
     ?>
-    <h1><?= $isEdit ? '広告バナー編集' : '広告バナー新規作成' ?></h1>
+    <h1 class="mb-4"><?= $isEdit ? '広告バナー編集' : '広告バナー新規作成' ?></h1>
 
     <?php if ($errors): ?>
-        <div class="card" style="border-color:#ef4444; margin-bottom:16px;">
-            <ul style="margin:0; padding-left:20px;">
-                <?php foreach ($errors as $error): ?>
-                    <li><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></li>
-                <?php endforeach; ?>
-            </ul>
-        </div>
+      <div class="alert alert-danger" role="alert">
+        <ul class="mb-0 ps-3">
+          <?php foreach ($errors as $error): ?>
+            <li><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></li>
+          <?php endforeach; ?>
+        </ul>
+      </div>
     <?php endif; ?>
 
-    <form method="post" class="card" style="padding:20px; display:grid; gap:16px;">
+    <form method="post" class="card shadow-sm">
+      <div class="card-body">
         <?php csrf_field(); ?>
         <input type="hidden" name="action" value="save">
+        <div class="row g-3">
+          <div class="col-12">
+            <label for="image_url" class="form-label">画像URL<span class="text-danger ms-1">*</span></label>
+            <input type="url" class="form-control" id="image_url" name="image_url" value="<?= htmlspecialchars((string)$values['image_url'], ENT_QUOTES, 'UTF-8') ?>" required>
+          </div>
+          <div class="col-12">
+            <label for="link_url" class="form-label">リンクURL</label>
+            <input type="url" class="form-control" id="link_url" name="link_url" value="<?= htmlspecialchars((string)$values['link_url'], ENT_QUOTES, 'UTF-8') ?>" placeholder="https://example.com">
+            <div class="form-text">空欄の場合はリンクなしで表示されます。</div>
+          </div>
+          <div class="col-12">
+            <div class="d-flex flex-wrap gap-4">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="target_blank" name="target_blank" value="1" <?= ((int)$values['target_blank'] === 1) ? 'checked' : '' ?>>
+                <label class="form-check-label" for="target_blank">新しいタブで開く（target="_blank"）</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="is_active" name="is_active" value="1" <?= ((int)$values['is_active'] === 1) ? 'checked' : '' ?>>
+                <label class="form-check-label" for="is_active">公開（表示）</label>
+              </div>
+            </div>
+          </div>
+          <div class="col-sm-4 col-md-3 col-lg-2">
+            <label for="sort_order" class="form-label">表示順</label>
+            <input type="number" class="form-control" id="sort_order" name="sort_order" value="<?= (int)$values['sort_order'] ?>" step="1" min="0">
+            <div class="form-text">数値が小さいほど上に表示されます。</div>
+          </div>
+        </div>
+      </div>
+      <div class="card-footer d-flex gap-2 flex-wrap justify-content-between">
         <div>
-            <label for="image_url" style="display:block; font-weight:bold; margin-bottom:4px;">画像URL<span style="color:#ef4444;">*</span></label>
-            <input type="url" id="image_url" name="image_url" value="<?= htmlspecialchars((string)$values['image_url'], ENT_QUOTES, 'UTF-8') ?>" required style="width:100%;">
+          <button type="submit" class="btn btn-primary">保存する</button>
+          <a href="/admin/ads/index.php" class="btn btn-outline-secondary ms-2">一覧に戻る</a>
         </div>
-        <div>
-            <label for="link_url" style="display:block; font-weight:bold; margin-bottom:4px;">リンクURL</label>
-            <input type="url" id="link_url" name="link_url" value="<?= htmlspecialchars((string)$values['link_url'], ENT_QUOTES, 'UTF-8') ?>" placeholder="https://example.com" style="width:100%;">
-            <p style="font-size:12px; color:#64748b; margin:4px 0 0;">空欄の場合はリンクなしで表示されます。</p>
-        </div>
-        <div style="display:flex; gap:16px; flex-wrap:wrap;">
-            <label style="display:flex; align-items:center; gap:6px;">
-                <input type="checkbox" name="target_blank" value="1" <?= ((int)$values['target_blank'] === 1) ? 'checked' : '' ?>>
-                新しいタブで開く（target="_blank"）
-            </label>
-            <label style="display:flex; align-items:center; gap:6px;">
-                <input type="checkbox" name="is_active" value="1" <?= ((int)$values['is_active'] === 1) ? 'checked' : '' ?>>
-                公開（表示）
-            </label>
-        </div>
-        <div>
-            <label for="sort_order" style="display:block; font-weight:bold; margin-bottom:4px;">表示順</label>
-            <input type="number" id="sort_order" name="sort_order" value="<?= (int)$values['sort_order'] ?>" step="1" min="0" style="width:120px;">
-            <p style="font-size:12px; color:#64748b; margin:4px 0 0;">数値が小さいほど上に表示されます。</p>
-        </div>
-        <div style="display:flex; gap:12px; flex-wrap:wrap;">
-            <button type="submit" class="button" style="padding:8px 20px;">保存する</button>
-            <a href="/admin/ads/index.php" class="button" style="padding:8px 20px; background:#e2e8f0; color:#1f2937;">一覧に戻る</a>
-        </div>
+      </div>
     </form>
 
     <?php if ($isEdit): ?>
-        <form method="post" onsubmit="return confirm('この広告を削除しますか？');" style="margin-top:24px;">
-            <?php csrf_field(); ?>
-            <input type="hidden" name="action" value="delete">
-            <button type="submit" style="background:#fee2e2; color:#b91c1c; padding:8px 20px; border:1px solid #fca5a5; border-radius:4px;">削除する</button>
-        </form>
+      <form method="post" class="mt-4" onsubmit="return confirm('この広告を削除しますか？');">
+        <?php csrf_field(); ?>
+        <input type="hidden" name="action" value="delete">
+        <button type="submit" class="btn btn-outline-danger">削除する</button>
+      </form>
     <?php endif; ?>
     <?php
 });

@@ -20,11 +20,11 @@ function isActive(string $href): bool {
 }
 
 function renderHeader(string $title = '管理画面'): void {
-    echo "<!doctype html>\n<html lang=\"ja\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>" . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . "</title>\n<link rel=\"stylesheet\" href=\"/admin/assets/admin.css\">\n</head>\n<body>\n";
+    echo "<!doctype html>\n<html lang=\"ja\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>" . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . "</title>\n<link href=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css\" rel=\"stylesheet\" integrity=\"sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH\" crossorigin=\"anonymous\">\n<link rel=\"stylesheet\" href=\"/admin/assets/admin.css\">\n</head>\n<body>\n";
 }
 
 function renderFooter(): void {
-    echo "</body></html>";
+    echo "<script src=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js\" integrity=\"sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz\" crossorigin=\"anonymous\"></script>\n</body></html>";
 }
 
 function renderLayout(string $title, callable $contentRenderer): void {
@@ -35,9 +35,9 @@ function renderLayout(string $title, callable $contentRenderer): void {
         $activeClass = isActive($item['href']) ? ' active' : '';
         echo "      <a class=\"nav-item$activeClass\" href=\"" . htmlspecialchars($item['href']) . "\">" . htmlspecialchars($item['label']) . "</a>\n";
     }
-    echo "    </nav>\n  </aside>\n  <main class=\"content\">\n";
+    echo "    </nav>\n  </aside>\n  <main class=\"content\">\n    <div class=\"container-fluid py-4\">\n";
     $contentRenderer();
-    echo "  </main>\n</div>\n";
+    echo "    </div>\n  </main>\n</div>\n";
     renderFooter();
 }
 

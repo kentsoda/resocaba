@@ -335,137 +335,276 @@ renderLayout('求人 編集/新規', function () {
     }
 
     ?>
-    <h1>求人 編集/新規</h1>
+    <h1 class="mb-2">求人 編集/新規</h1>
     <?php if ($isEdit): ?>
-      <p>ID: <?= (int)$id ?></p>
+      <p class="text-muted">ID: <?= (int)$id ?></p>
     <?php endif; ?>
     <?php if (isset($_GET['saved'])): ?>
-      <div class="card" style="border-color:#22c55e;">保存しました</div>
+      <div class="alert alert-success alert-dismissible fade show" role="alert">
+        保存しました
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
     <?php endif; ?>
     <?php if ($errors): ?>
-      <div class="card" style="border-color:#ef4444;"><?= htmlspecialchars(implode("\n", $errors), ENT_QUOTES, 'UTF-8') ?></div>
+      <div class="alert alert-danger" role="alert">
+        <?= nl2br(htmlspecialchars(implode("\n", $errors), ENT_QUOTES, 'UTF-8')) ?>
+      </div>
     <?php endif; ?>
 
-    <form method="post" action="">
+    <form method="post" action="" class="needs-validation" novalidate>
       <?php csrf_field(); ?>
-      <div style="display:grid; gap:12px; max-width:920px;">
-        <label>タイトル<br><input type="text" name="title" value="<?= htmlspecialchars($values['title'], ENT_QUOTES, 'UTF-8') ?>" required></label>
-        <label>ステータス<br>
-          <select name="status">
-            <?php foreach (['published' => '公開', 'draft' => '下書き', 'archived' => '非公開'] as $k => $label): ?>
-              <option value="<?= htmlspecialchars($k, ENT_QUOTES, 'UTF-8') ?>"<?= $values['status'] === $k ? ' selected' : '' ?>><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></option>
-            <?php endforeach; ?>
-          </select>
-        </label>
-        <label>店舗<br>
-          <select name="store_id" required>
-            <option value="">選択してください</option>
-            <?php foreach ($stores as $s): $sel = ((int)$values['store_id'] === (int)$s['id']) ? ' selected' : ''; ?>
-              <option value="<?= (int)$s['id'] ?>"<?= $sel ?>><?= htmlspecialchars((string)$s['name'], ENT_QUOTES, 'UTF-8') ?></option>
-            <?php endforeach; ?>
-          </select>
-        </label>
-        <div style="display:grid; grid-template-columns: 1fr 160px; gap:12px;">
-          <label>給与（自由入力）<br><input type="text" name="salary_text" value="<?= htmlspecialchars($values['salary_text'], ENT_QUOTES, 'UTF-8') ?>"></label>
-          <label>通貨<br><input type="text" name="currency" value="<?= htmlspecialchars($values['currency'], ENT_QUOTES, 'UTF-8') ?>" placeholder="JPY"></label>
-        </div>
-        <label>募集職種<br>
-          <select name="job_type">
-            <?php foreach ($jobTypeOptions as $opt): $lab = $opt === '' ? '未選択' : $opt; ?>
-              <option value="<?= htmlspecialchars($opt, ENT_QUOTES, 'UTF-8') ?>"<?= ($values['job_type'] === $opt) ? ' selected' : '' ?>><?= htmlspecialchars($lab, ENT_QUOTES, 'UTF-8') ?></option>
-            <?php endforeach; ?>
-          </select>
-        </label>
-        <label>カード表示文<br><input type="text" name="card_message" value="<?= htmlspecialchars($values['card_message'], ENT_QUOTES, 'UTF-8') ?>"></label>
-        <label>概要メッセージ（HTML）<br><textarea class="js-wysiwyg" name="message_html" rows="10"><?= htmlspecialchars($values['message_html'] !== '' ? $values['message_html'] : (string)($meta['message_html'] ?? ''), ENT_QUOTES, 'UTF-8') ?></textarea></label>
-        <label>お仕事の内容（HTML）<br><textarea class="js-wysiwyg" name="work_content_html" rows="12"><?= htmlspecialchars($values['work_content_html'] !== '' ? $values['work_content_html'] : (string)($meta['work_content_html'] ?? ''), ENT_QUOTES, 'UTF-8') ?></textarea></label>
-
-        <fieldset style="border:1px solid #e5e7eb; padding:12px;">
-          <legend>勤務地・給与</legend>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-            <label>地域（都道府県等）<br><input type="text" name="region_prefecture" value="<?= htmlspecialchars($values['region_prefecture'] !== '' ? $values['region_prefecture'] : (string)($meta['region_prefecture'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"></label>
-            <label>求人番号<br><input type="text" name="job_code" value="<?= htmlspecialchars((string)($meta['job_code'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"></label>
-            <label>給与（最小）<br><input type="number" name="salary_min" value="<?= htmlspecialchars($values['salary_min'] !== '' ? $values['salary_min'] : (string)($meta['salary_min'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" min="0"></label>
-            <label>給与（最大）<br><input type="number" name="salary_max" value="<?= htmlspecialchars($values['salary_max'] !== '' ? $values['salary_max'] : (string)($meta['salary_max'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" min="0"></label>
-            <label>給与単位<br>
-              <select name="salary_unit">
-                <?php $suNow = $values['salary_unit'] !== '' ? (string)$values['salary_unit'] : (string)($meta['salary_unit'] ?? ''); foreach ($salaryUnitOptions as $k => $lab): ?>
-                  <option value="<?= htmlspecialchars($k, ENT_QUOTES, 'UTF-8') ?>"<?= $suNow === $k ? ' selected' : '' ?>><?= htmlspecialchars($lab, ENT_QUOTES, 'UTF-8') ?></option>
-                <?php endforeach; ?>
-              </select>
-            </label>
-            <label>最低勤務期間<br>
-              <select name="min_term">
-                <?php $mtNow = (string)($meta['min_term'] ?? '未選択'); foreach ($minTermOptions as $opt): ?>
-                  <option value="<?= htmlspecialchars($opt, ENT_QUOTES, 'UTF-8') ?>"<?= $mtNow === $opt ? ' selected' : '' ?>><?= htmlspecialchars($opt, ENT_QUOTES, 'UTF-8') ?></option>
-                <?php endforeach; ?>
-              </select>
-            </label>
-          </div>
-        </fieldset>
-
-        <fieldset style="border:1px solid #e5e7eb; padding:12px;">
-          <legend>営業情報</legend>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-            <label>営業時間<br><input type="text" name="business_hours" value="<?= htmlspecialchars((string)($meta['business_hours'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"></label>
-            <label>店休日<br><input type="text" name="regular_holiday" value="<?= htmlspecialchars((string)($meta['regular_holiday'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"></label>
-            <label>掲載期限<br><input type="date" name="valid_through" value="<?= htmlspecialchars((string)($meta['valid_through'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"></label>
-          </div>
-        </fieldset>
-
-        <fieldset style="border:1px solid #e5e7eb; padding:12px;">
-          <legend>応募資格</legend>
-          <div style="display:flex; flex-wrap:wrap; gap:12px;">
-            <?php $selectedQual = (array)($meta['qualifications'] ?? []); foreach ($qualificationsOptions as $opt): $chk = in_array($opt, $selectedQual, true) ? ' checked' : ''; ?>
-              <label style="display:flex; gap:6px; align-items:center;"><input type="checkbox" name="qualifications[]" value="<?= htmlspecialchars($opt, ENT_QUOTES, 'UTF-8') ?>"<?= $chk ?>><?= htmlspecialchars($opt, ENT_QUOTES, 'UTF-8') ?></label>
-            <?php endforeach; ?>
-          </div>
-        </fieldset>
-
-        <fieldset style="border:1px solid #e5e7eb; padding:12px;">
-          <legend>待遇・福利厚生</legend>
-          <?php foreach ($benefitsOptions as $cat => $opts): $selArr = (array)(($meta['benefits'][$cat] ?? [])); $name = 'benefits_' . md5($cat) . '[]'; ?>
-            <div style="margin-bottom:8px;"><strong><?= htmlspecialchars($cat, ENT_QUOTES, 'UTF-8') ?></strong>
-              <div style="display:flex; flex-wrap:wrap; gap:12px; margin-top:6px;">
-                <?php foreach ($opts as $opt): $chk = in_array($opt, $selArr, true) ? ' checked' : ''; ?>
-                  <label style="display:flex; gap:6px; align-items:center;"><input type="checkbox" name="<?= $name ?>" value="<?= htmlspecialchars($opt, ENT_QUOTES, 'UTF-8') ?>"<?= $chk ?>><?= htmlspecialchars($opt, ENT_QUOTES, 'UTF-8') ?></label>
-                <?php endforeach; ?>
-              </div>
-            </div>
-          <?php endforeach; ?>
-        </fieldset>
-
-        <fieldset style="border:1px solid #e5e7eb; padding:12px;">
-          <legend>トップページ表示カテゴリ</legend>
-          <?php $selHome = (array)($meta['home_sections'] ?? []); foreach ($homeSectionsOptions as $key => $lab): $chk = in_array($key, $selHome, true) ? ' checked' : ''; ?>
-            <label style="margin-right:12px;"><input type="checkbox" name="home_sections[]" value="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"<?= $chk ?>> <?= htmlspecialchars($lab, ENT_QUOTES, 'UTF-8') ?></label>
-          <?php endforeach; ?>
-        </fieldset>
-
-        <fieldset style="border:1px solid #e5e7eb; padding:12px;">
-          <legend>タグ</legend>
-          <?php $selTags = (array)($meta['tag_ids'] ?? []); if ($tagGroups): ?>
-            <?php foreach ($tagGroups as $groupLabel => $tagList): ?>
-              <div style="margin-bottom:8px;">
-                <strong><?= htmlspecialchars((string)$groupLabel, ENT_QUOTES, 'UTF-8') ?></strong>
-                <div style="display:flex; flex-wrap:wrap; gap:12px; margin-top:6px;">
-                  <?php foreach ($tagList as $t): $tid = (int)$t['id']; $chk = in_array($tid, $selTags, true) ? ' checked' : ''; ?>
-                    <label><input type="checkbox" name="tag_ids[]" value="<?= $tid ?>"<?= $chk ?>> <?= htmlspecialchars((string)$t['name'], ENT_QUOTES, 'UTF-8') ?></label>
-                  <?php endforeach; ?>
+      <div class="row g-4">
+        <div class="col-12 col-xxl-8">
+          <div class="card shadow-sm">
+            <div class="card-header">基本情報</div>
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-md-8">
+                  <label class="form-label" for="title">タイトル</label>
+                  <input type="text" class="form-control" id="title" name="title" value="<?= htmlspecialchars($values['title'], ENT_QUOTES, 'UTF-8') ?>" required>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label" for="status">ステータス</label>
+                  <select class="form-select" id="status" name="status">
+                    <?php foreach (['published' => '公開', 'draft' => '下書き', 'archived' => '非公開'] as $k => $label): ?>
+                      <option value="<?= htmlspecialchars($k, ENT_QUOTES, 'UTF-8') ?>"<?= $values['status'] === $k ? ' selected' : '' ?>><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></option>
+                    <?php endforeach; ?>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label" for="store_id">店舗</label>
+                  <select class="form-select" id="store_id" name="store_id" required>
+                    <option value="">選択してください</option>
+                    <?php foreach ($stores as $s): $sel = ((int)$values['store_id'] === (int)$s['id']) ? ' selected' : ''; ?>
+                      <option value="<?= (int)$s['id'] ?>"<?= $sel ?>><?= htmlspecialchars((string)$s['name'], ENT_QUOTES, 'UTF-8') ?></option>
+                    <?php endforeach; ?>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label" for="job_type">募集職種</label>
+                  <select class="form-select" id="job_type" name="job_type">
+                    <?php foreach ($jobTypeOptions as $opt): $lab = $opt === '' ? '未選択' : $opt; ?>
+                      <option value="<?= htmlspecialchars($opt, ENT_QUOTES, 'UTF-8') ?>"<?= ($values['job_type'] === $opt) ? ' selected' : '' ?>><?= htmlspecialchars($lab, ENT_QUOTES, 'UTF-8') ?></option>
+                    <?php endforeach; ?>
+                  </select>
+                </div>
+                <div class="col-md-8">
+                  <label class="form-label" for="card_message">カード表示文</label>
+                  <input type="text" class="form-control" id="card_message" name="card_message" value="<?= htmlspecialchars($values['card_message'], ENT_QUOTES, 'UTF-8') ?>">
+                </div>
+                <div class="col-md-8">
+                  <label class="form-label" for="salary_text">給与（自由入力）</label>
+                  <input type="text" class="form-control" id="salary_text" name="salary_text" value="<?= htmlspecialchars($values['salary_text'], ENT_QUOTES, 'UTF-8') ?>">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label" for="currency">通貨</label>
+                  <input type="text" class="form-control" id="currency" name="currency" value="<?= htmlspecialchars($values['currency'], ENT_QUOTES, 'UTF-8') ?>" placeholder="JPY">
+                </div>
+                <div class="col-12">
+                  <label class="form-label" for="message_html">概要メッセージ（HTML）</label>
+                  <textarea class="form-control js-wysiwyg" id="message_html" name="message_html" rows="10"><?= htmlspecialchars($values['message_html'] !== '' ? $values['message_html'] : (string)($meta['message_html'] ?? ''), ENT_QUOTES, 'UTF-8') ?></textarea>
+                </div>
+                <div class="col-12">
+                  <label class="form-label" for="work_content_html">お仕事の内容（HTML）</label>
+                  <textarea class="form-control js-wysiwyg" id="work_content_html" name="work_content_html" rows="12"><?= htmlspecialchars($values['work_content_html'] !== '' ? $values['work_content_html'] : (string)($meta['work_content_html'] ?? ''), ENT_QUOTES, 'UTF-8') ?></textarea>
                 </div>
               </div>
-            <?php endforeach; ?>
-          <?php else: ?>
-            <p style="color:#64748b;">タグは未設定です</p>
-          <?php endif; ?>
-        </fieldset>
+            </div>
+          </div>
 
-        <label>詳細（HTML）<br><textarea class="js-wysiwyg" name="description_html" rows="8"><?= htmlspecialchars($values['description_html'] !== '' ? $values['description_html'] : (string)($meta['description_html'] ?? ''), ENT_QUOTES, 'UTF-8') ?></textarea></label>
+          <div class="card shadow-sm mt-4">
+            <div class="card-header">追加情報</div>
+            <div class="card-body">
+              <div class="accordion" id="job-detail-accordion">
+                <div class="accordion-item">
+                  <h2 class="accordion-header" id="heading-location">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-location" aria-expanded="true" aria-controls="collapse-location">
+                      勤務地・給与
+                    </button>
+                  </h2>
+                  <div id="collapse-location" class="accordion-collapse collapse show" aria-labelledby="heading-location" data-bs-parent="#job-detail-accordion">
+                    <div class="accordion-body">
+                      <div class="row g-3">
+                        <div class="col-md-6">
+                          <label class="form-label" for="region_prefecture">地域（都道府県等）</label>
+                          <input type="text" class="form-control" id="region_prefecture" name="region_prefecture" value="<?= htmlspecialchars($values['region_prefecture'] !== '' ? $values['region_prefecture'] : (string)($meta['region_prefecture'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                        </div>
+                        <div class="col-md-6">
+                          <label class="form-label" for="job_code">求人番号</label>
+                          <input type="text" class="form-control" id="job_code" name="job_code" value="<?= htmlspecialchars((string)($meta['job_code'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                        </div>
+                        <div class="col-md-6">
+                          <label class="form-label" for="salary_min">給与（最小）</label>
+                          <input type="number" class="form-control" id="salary_min" name="salary_min" value="<?= htmlspecialchars($values['salary_min'] !== '' ? $values['salary_min'] : (string)($meta['salary_min'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" min="0">
+                        </div>
+                        <div class="col-md-6">
+                          <label class="form-label" for="salary_max">給与（最大）</label>
+                          <input type="number" class="form-control" id="salary_max" name="salary_max" value="<?= htmlspecialchars($values['salary_max'] !== '' ? $values['salary_max'] : (string)($meta['salary_max'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" min="0">
+                        </div>
+                        <div class="col-md-6">
+                          <label class="form-label" for="salary_unit">給与単位</label>
+                          <select class="form-select" id="salary_unit" name="salary_unit">
+                            <?php $suNow = $values['salary_unit'] !== '' ? (string)$values['salary_unit'] : (string)($meta['salary_unit'] ?? ''); foreach ($salaryUnitOptions as $k => $lab): ?>
+                              <option value="<?= htmlspecialchars($k, ENT_QUOTES, 'UTF-8') ?>"<?= $suNow === $k ? ' selected' : '' ?>><?= htmlspecialchars($lab, ENT_QUOTES, 'UTF-8') ?></option>
+                            <?php endforeach; ?>
+                          </select>
+                        </div>
+                        <div class="col-md-6">
+                          <label class="form-label" for="min_term">最低勤務期間</label>
+                          <select class="form-select" id="min_term" name="min_term">
+                            <?php $mtNow = (string)($meta['min_term'] ?? '未選択'); foreach ($minTermOptions as $opt): ?>
+                              <option value="<?= htmlspecialchars($opt, ENT_QUOTES, 'UTF-8') ?>"<?= $mtNow === $opt ? ' selected' : '' ?>><?= htmlspecialchars($opt, ENT_QUOTES, 'UTF-8') ?></option>
+                            <?php endforeach; ?>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-        <div style="display:flex; gap:8px;">
-          <button type="submit">保存</button>
-          <a href="/admin/jobs/" class="button">一覧に戻る</a>
+                <div class="accordion-item">
+                  <h2 class="accordion-header" id="heading-business">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-business" aria-expanded="false" aria-controls="collapse-business">
+                      営業情報
+                    </button>
+                  </h2>
+                  <div id="collapse-business" class="accordion-collapse collapse" aria-labelledby="heading-business" data-bs-parent="#job-detail-accordion">
+                    <div class="accordion-body">
+                      <div class="row g-3">
+                        <div class="col-md-6">
+                          <label class="form-label" for="business_hours">営業時間</label>
+                          <input type="text" class="form-control" id="business_hours" name="business_hours" value="<?= htmlspecialchars((string)($meta['business_hours'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                        </div>
+                        <div class="col-md-6">
+                          <label class="form-label" for="regular_holiday">店休日</label>
+                          <input type="text" class="form-control" id="regular_holiday" name="regular_holiday" value="<?= htmlspecialchars((string)($meta['regular_holiday'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                        </div>
+                        <div class="col-md-6">
+                          <label class="form-label" for="valid_through">掲載期限</label>
+                          <input type="date" class="form-control" id="valid_through" name="valid_through" value="<?= htmlspecialchars((string)($meta['valid_through'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="accordion-item">
+                  <h2 class="accordion-header" id="heading-qualifications">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-qualifications" aria-expanded="false" aria-controls="collapse-qualifications">
+                      応募資格
+                    </button>
+                  </h2>
+                  <div id="collapse-qualifications" class="accordion-collapse collapse" aria-labelledby="heading-qualifications" data-bs-parent="#job-detail-accordion">
+                    <div class="accordion-body">
+                      <div class="row g-2">
+                        <?php $selectedQual = (array)($meta['qualifications'] ?? []); foreach ($qualificationsOptions as $opt): $chk = in_array($opt, $selectedQual, true) ? ' checked' : ''; ?>
+                          <div class="col-md-6 col-lg-4">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" id="qual_<?= md5($opt) ?>" name="qualifications[]" value="<?= htmlspecialchars($opt, ENT_QUOTES, 'UTF-8') ?>"<?= $chk ?>>
+                              <label class="form-check-label" for="qual_<?= md5($opt) ?>"><?= htmlspecialchars($opt, ENT_QUOTES, 'UTF-8') ?></label>
+                            </div>
+                          </div>
+                        <?php endforeach; ?>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="accordion-item">
+                  <h2 class="accordion-header" id="heading-benefits">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-benefits" aria-expanded="false" aria-controls="collapse-benefits">
+                      待遇・福利厚生
+                    </button>
+                  </h2>
+                  <div id="collapse-benefits" class="accordion-collapse collapse" aria-labelledby="heading-benefits" data-bs-parent="#job-detail-accordion">
+                    <div class="accordion-body">
+                      <?php foreach ($benefitsOptions as $cat => $opts): $selArr = (array)(($meta['benefits'][$cat] ?? [])); $name = 'benefits_' . md5($cat) . '[]'; ?>
+                        <div class="mb-3">
+                          <h6 class="mb-2"><?= htmlspecialchars($cat, ENT_QUOTES, 'UTF-8') ?></h6>
+                          <div class="row g-2">
+                            <?php foreach ($opts as $opt): $chk = in_array($opt, $selArr, true) ? ' checked' : ''; ?>
+                              <div class="col-md-6">
+                                <div class="form-check">
+                                  <input class="form-check-input" type="checkbox" id="benefit_<?= md5($cat . $opt) ?>" name="<?= $name ?>" value="<?= htmlspecialchars($opt, ENT_QUOTES, 'UTF-8') ?>"<?= $chk ?>>
+                                  <label class="form-check-label" for="benefit_<?= md5($cat . $opt) ?>"><?= htmlspecialchars($opt, ENT_QUOTES, 'UTF-8') ?></label>
+                                </div>
+                              </div>
+                            <?php endforeach; ?>
+                          </div>
+                        </div>
+                      <?php endforeach; ?>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="accordion-item">
+                  <h2 class="accordion-header" id="heading-home">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-home" aria-expanded="false" aria-controls="collapse-home">
+                      トップページ表示カテゴリ
+                    </button>
+                  </h2>
+                  <div id="collapse-home" class="accordion-collapse collapse" aria-labelledby="heading-home" data-bs-parent="#job-detail-accordion">
+                    <div class="accordion-body">
+                      <div class="row g-2">
+                        <?php $selHome = (array)($meta['home_sections'] ?? []); foreach ($homeSectionsOptions as $key => $lab): $chk = in_array($key, $selHome, true) ? ' checked' : ''; ?>
+                          <div class="col-md-4">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" id="home_<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>" name="home_sections[]" value="<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"<?= $chk ?>>
+                              <label class="form-check-label" for="home_<?= htmlspecialchars($key, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($lab, ENT_QUOTES, 'UTF-8') ?></label>
+                            </div>
+                          </div>
+                        <?php endforeach; ?>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="accordion-item">
+                  <h2 class="accordion-header" id="heading-tags">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-tags" aria-expanded="false" aria-controls="collapse-tags">
+                      タグ
+                    </button>
+                  </h2>
+                  <div id="collapse-tags" class="accordion-collapse collapse" aria-labelledby="heading-tags" data-bs-parent="#job-detail-accordion">
+                    <div class="accordion-body">
+                      <?php $selTags = (array)($meta['tag_ids'] ?? []); if ($tagGroups): ?>
+                        <?php foreach ($tagGroups as $groupLabel => $tagList): ?>
+                          <div class="mb-3">
+                            <h6 class="mb-2"><?= htmlspecialchars((string)$groupLabel, ENT_QUOTES, 'UTF-8') ?></h6>
+                            <div class="row g-2">
+                              <?php foreach ($tagList as $t): $tid = (int)$t['id']; $chk = in_array($tid, $selTags, true) ? ' checked' : ''; ?>
+                                <div class="col-md-6 col-lg-4">
+                                  <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="tag_<?= $tid ?>" name="tag_ids[]" value="<?= $tid ?>"<?= $chk ?>>
+                                    <label class="form-check-label" for="tag_<?= $tid ?>"><?= htmlspecialchars((string)$t['name'], ENT_QUOTES, 'UTF-8') ?></label>
+                                  </div>
+                                </div>
+                              <?php endforeach; ?>
+                            </div>
+                          </div>
+                        <?php endforeach; ?>
+                      <?php else: ?>
+                        <p class="text-muted mb-0">タグは未設定です</p>
+                      <?php endif; ?>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card shadow-sm mt-4">
+            <div class="card-header">詳細（HTML）</div>
+            <div class="card-body">
+              <textarea class="form-control js-wysiwyg" name="description_html" rows="8"><?= htmlspecialchars($values['description_html'] !== '' ? $values['description_html'] : (string)($meta['description_html'] ?? ''), ENT_QUOTES, 'UTF-8') ?></textarea>
+            </div>
+          </div>
         </div>
+      </div>
+
+      <div class="d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-primary">保存</button>
+        <a href="/admin/jobs/" class="btn btn-outline-secondary">一覧に戻る</a>
       </div>
     </form>
     <?php
