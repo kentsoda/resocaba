@@ -1,15 +1,37 @@
-/* 最小限のスタイル（将来拡張） */
-html, body { margin: 0; padding: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", Arial, sans-serif; }
-.admin-wrap { display: flex; min-height: 100vh; }
-.sidebar { width: 220px; background: #0f172a; color: #fff; padding: 16px; box-sizing: border-box; }
-.brand { font-weight: 700; margin-bottom: 16px; }
-.nav { display: flex; flex-direction: column; gap: 8px; }
-.nav-item { color: #cbd5e1; text-decoration: none; padding: 8px 10px; border-radius: 6px; }
-.nav-item.active, .nav-item:hover { background: #1e293b; color: #fff; }
-.content { flex: 1; padding: 24px; box-sizing: border-box; }
-.kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
-.card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; background: #fff; }
-.card h3 { margin: 0 0 8px; font-size: 14px; color: #334155; }
-.card .value { font-size: 24px; font-weight: 700; }
+:root {
+    --admin-sidebar-width: 260px;
+}
 
+.admin-sidebar {
+    width: var(--admin-sidebar-width);
+}
 
+.admin-sidebar .nav-link {
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.admin-sidebar .nav-link:hover,
+.admin-sidebar .nav-link:focus {
+    color: #fff;
+}
+
+.admin-sidebar .nav-link.active {
+    color: #0d6efd;
+    background-color: #fff;
+}
+
+.admin-sidebar-spacer {
+    width: var(--admin-sidebar-width);
+}
+
+@media (max-width: 767.98px) {
+    .admin-sidebar {
+        position: static !important;
+        width: 100%;
+        height: auto !important;
+    }
+
+    .admin-sidebar-spacer {
+        display: none !important;
+    }
+}

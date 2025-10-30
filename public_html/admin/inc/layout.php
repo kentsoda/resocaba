@@ -20,25 +20,51 @@ function isActive(string $href): bool {
 }
 
 function renderHeader(string $title = '管理画面'): void {
-    echo "<!doctype html>\n<html lang=\"ja\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>" . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . "</title>\n<link rel=\"stylesheet\" href=\"/admin/assets/admin.css\">\n</head>\n<body>\n";
+    echo "<!doctype html>\n<html lang=\"ja\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>" . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . "</title>\n<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css\" integrity=\"sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH\" crossorigin=\"anonymous\">\n<link rel=\"stylesheet\" href=\"/admin/assets/admin.css\">\n</head>\n<body class=\"bg-body-tertiary\">\n";
 }
 
 function renderFooter(): void {
-    echo "</body></html>";
+    echo "<script src=\"https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js\" integrity=\"sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz\" crossorigin=\"anonymous\"></script>\n</body></html>";
 }
 
 function renderLayout(string $title, callable $contentRenderer): void {
     global $menu;
     renderHeader($title);
-    echo "<div class=\"admin-wrap\">\n  <aside class=\"sidebar\">\n    <div class=\"brand\">Admin</div>\n    <nav class=\"nav\">\n";
+
+    $year = date('Y');
+
+    echo <<<HTML
+<div class="container-fluid">
+  <div class="row flex-nowrap">
+    <aside class="admin-sidebar d-flex flex-column flex-shrink-0 p-3 p-md-4 text-white bg-dark position-fixed top-0 start-0 vh-100 overflow-auto">
+      <a href="/admin/" class="d-flex align-items-center mb-3 mb-md-4 me-md-auto text-white text-decoration-none">
+        <span class="fs-4 fw-semibold">Admin</span>
+      </a>
+      <hr class="border-secondary opacity-50">
+      <nav class="nav nav-pills flex-column gap-1">
+HTML;
+
     foreach ($menu as $item) {
         $activeClass = isActive($item['href']) ? ' active' : '';
-        echo "      <a class=\"nav-item$activeClass\" href=\"" . htmlspecialchars($item['href']) . "\">" . htmlspecialchars($item['label']) . "</a>\n";
+        $ariaCurrent = $activeClass ? ' aria-current="page"' : '';
+        echo '        <a class="nav-link' . $activeClass . '"' . $ariaCurrent . ' href="' . htmlspecialchars($item['href']) . '">' . htmlspecialchars($item['label']) . "</a>\n";
     }
-    echo "    </nav>\n  </aside>\n  <main class=\"content\">\n";
+
+    echo <<<HTML
+      </nav>
+      <div class="mt-auto pt-4 text-secondary small">&copy; {$year}</div>
+    </aside>
+    <div class="admin-sidebar-spacer col-auto d-none d-md-block" aria-hidden="true"></div>
+    <main class="admin-main col ms-auto px-4 py-4 d-flex flex-column min-vh-100">
+HTML;
+
     $contentRenderer();
-    echo "  </main>\n</div>\n";
+
+    echo <<<HTML
+    </main>
+  </div>
+</div>
+HTML;
+
     renderFooter();
 }
-
-
