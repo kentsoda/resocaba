@@ -2,6 +2,17 @@
 require_once 'database.php';
 require_once 'crud.php';
 
+/**
+ * 広告バナーを取得（表示中のみ／並び順昇順／件数制限）
+ *
+ * @param int $limit 取得件数（デフォルト4件）
+ * @return array|false バナー配列、失敗時はfalse
+ */
+function get_ad_banners(int $limit = 4) {
+    $sql = "SELECT id, image_url, link_url, target_blank FROM ad_banners WHERE is_active = 1 ORDER BY sort_order ASC, id ASC LIMIT ?";
+    return executeQuery($sql, [(int)$limit]);
+}
+
 function get_job_list() {
     $jobs = selectRecords('jobs');
     return $jobs;

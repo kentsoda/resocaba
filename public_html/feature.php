@@ -269,11 +269,18 @@
             <!-- Ad Banner Section -->
             <div class="bg-white py-12 sm:py-16">
                 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                     <div class="flex flex-col gap-4 lg:grid lg:grid-cols-4 lg:gap-0">
-                        <a href="#" class="block group overflow-hidden"><img src="https://placehold.co/640x200/0ABAB5/ffffff?text=AD+BANNER+1" alt="広告バナー 1" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy"></a>
-                        <a href="#" class="block group overflow-hidden"><img src="https://placehold.co/640x200/f59e0b/ffffff?text=AD+BANNER+2" alt="広告バナー 2" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy"></a>
-                        <a href="#" class="block group overflow-hidden"><img src="https://placehold.co/640x200/1e293b/ffffff?text=AD+BANNER+3" alt="広告バナー 3" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy"></a>
-                        <a href="#" class="block group overflow-hidden"><img src="https://placehold.co/640x200/475569/ffffff?text=AD+BANNER+4" alt="広告バナー 4" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy"></a>
+                    <?php $ad_banners = get_ad_banners(4); ?>
+                    <div class="flex flex-col gap-4 lg:grid lg:grid-cols-4 lg:gap-0">
+                        <?php if (!empty($ad_banners)) : ?>
+                            <?php foreach ($ad_banners as $banner) : 
+                                $href = isset($banner['link_url']) && $banner['link_url'] !== '' ? $banner['link_url'] : '#';
+                                $target = (isset($banner['target_blank']) && (int)$banner['target_blank'] === 1) ? ' target=\"_blank\" rel=\"noopener\"' : '';
+                                $src = isset($banner['image_url']) ? $banner['image_url'] : '';
+                                $alt = '';
+                            ?>
+                                <a href="<?= htmlspecialchars($href, ENT_QUOTES, 'UTF-8') ?>" class="block group overflow-hidden"<?= $target ?>><img src="<?= htmlspecialchars($src, ENT_QUOTES, 'UTF-8') ?>" alt="<?= $alt ?>" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy"></a>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

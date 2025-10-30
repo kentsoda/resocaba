@@ -439,21 +439,34 @@
     <!-- Ad Banner Section -->
     <section id="ad-banner" class="py-12 bg-slate-100">
         <div class="max-w-none mx-auto">
+            <?php $ad_banners = get_ad_banners(4); ?>
             <!-- PC Grid Layout -->
             <div class="hidden lg:grid grid-cols-4 gap-0">
-                <a href="#" class="block group overflow-hidden"><img src="/assets/images/ui/ad-banner-1-640x200.jpg" alt="広告バナー 1" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy"></a>
-                <a href="#" class="block group overflow-hidden"><img src="/assets/images/ui/ad-banner-2-640x200.jpg" alt="広告バナー 2" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy"></a>
-                <a href="#" class="block group overflow-hidden"><img src="/assets/images/ui/ad-banner-3-640x200.jpg" alt="広告バナー 3" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy"></a>
-                <a href="#" class="block group overflow-hidden"><img src="/assets/images/ui/ad-banner-4-640x200.jpg" alt="広告バナー 4" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy"></a>
+                <?php if (!empty($ad_banners)) : ?>
+                    <?php foreach ($ad_banners as $banner) : 
+                        $href = isset($banner['link_url']) && $banner['link_url'] !== '' ? $banner['link_url'] : '#';
+                        $target = (isset($banner['target_blank']) && (int)$banner['target_blank'] === 1) ? ' target="_blank" rel="noopener"' : '';
+                        $src = isset($banner['image_url']) ? $banner['image_url'] : '';
+                        $alt = '';
+                    ?>
+                        <a href="<?= htmlspecialchars($href, ENT_QUOTES, 'UTF-8') ?>" class="block group overflow-hidden"<?= $target ?>><img src="<?= htmlspecialchars($src, ENT_QUOTES, 'UTF-8') ?>" alt="<?= $alt ?>" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy"></a>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             </div>
             <!-- Mobile Swiper Layout -->
             <div class="lg:hidden relative">
                 <div class="swiper ad-banner-swiper">
                     <div class="swiper-wrapper">
-                        <div class="swiper-slide"><a href="#"><img src="/assets/images/ui/ad-banner-1-640x200.jpg" alt="広告バナー 1" class="w-full" loading="lazy"></a></div>
-                        <div class="swiper-slide"><a href="#"><img src="/assets/images/ui/ad-banner-2-640x200.jpg" alt="広告バナー 2" class="w-full" loading="lazy"></a></div>
-                        <div class="swiper-slide"><a href="#"><img src="/assets/images/ui/ad-banner-3-640x200.jpg" alt="広告バナー 3" class="w-full" loading="lazy"></a></div>
-                        <div class="swiper-slide"><a href="#"><img src="/assets/images/ui/ad-banner-4-640x200.jpg" alt="広告バナー 4" class="w-full" loading="lazy"></a></div>
+                        <?php if (!empty($ad_banners)) : ?>
+                            <?php foreach ($ad_banners as $banner) : 
+                                $href = isset($banner['link_url']) && $banner['link_url'] !== '' ? $banner['link_url'] : '#';
+                                $target = (isset($banner['target_blank']) && (int)$banner['target_blank'] === 1) ? ' target="_blank" rel="noopener"' : '';
+                                $src = isset($banner['image_url']) ? $banner['image_url'] : '';
+                                $alt = '';
+                            ?>
+                                <div class="swiper-slide"><a href="<?= htmlspecialchars($href, ENT_QUOTES, 'UTF-8') ?>"<?= $target ?>><img src="<?= htmlspecialchars($src, ENT_QUOTES, 'UTF-8') ?>" alt="<?= $alt ?>" class="w-full" loading="lazy"></a></div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <div class="swiper-pagination !-bottom-6 !relative"></div>

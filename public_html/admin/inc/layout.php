@@ -36,7 +36,7 @@ function renderLayout(string $title, callable $contentRenderer): void {
     echo <<<HTML
 <div class="container-fluid">
   <div class="row flex-nowrap">
-    <aside class="admin-sidebar d-flex flex-column flex-shrink-0 p-3 p-md-4 text-white bg-dark position-fixed top-0 start-0 vh-100 overflow-auto">
+    <aside class="admin-sidebar d-flex flex-column flex-shrink-0 p-3 p-md-4 text-white bg-dark top-0 start-0 vh-100 overflow-auto">
       <a href="/admin/" class="d-flex align-items-center mb-3 mb-md-4 me-md-auto text-white text-decoration-none">
         <span class="fs-4 fw-semibold">Admin</span>
       </a>
@@ -52,14 +52,5 @@ HTML;
     echo "    </nav>\n  </aside>\n  <main class=\"content\">\n    <div class=\"container-fluid py-4\">\n";
     $contentRenderer();
     echo "    </div>\n  </main>\n</div>\n";
-    renderFooter();
-}
-
-    echo <<<HTML
-    </main>
-  </div>
-</div>
-HTML;
-
     renderFooter();
 }

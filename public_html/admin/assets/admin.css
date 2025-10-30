@@ -24,6 +24,10 @@
     width: var(--admin-sidebar-width);
 }
 
+main.content {
+    flex: 1;
+}
+
 @media (max-width: 767.98px) {
     .admin-sidebar {
         position: static !important;
@@ -33,5 +37,9 @@
 
     .admin-sidebar-spacer {
         display: none !important;
+    }
+
+    main.content {
+        margin-left: 0 !important;
     }
 }

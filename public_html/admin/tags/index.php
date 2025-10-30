@@ -140,6 +140,7 @@ renderLayout('タグ一覧', function () use ($rows, $q, $categoryFilter, $sortK
       <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse; width:100%; background:#fff;">
           <thead>
             <tr>
+              <th style="width:40px;"></th>
               <th style="width:80px;">ID</th>
               <th>名前</th>
               <th>カテゴリ</th>
@@ -148,17 +149,20 @@ renderLayout('タグ一覧', function () use ($rows, $q, $categoryFilter, $sortK
               <th style="width:160px;">操作</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="sortable-tbody">
             <?php if (!$rows): ?>
-              <tr><td colspan="6" style="text-align:center; color:#64748b;">タグがありません</td></tr>
+              <tr><td colspan="7" style="text-align:center; color:#64748b;">タグがありません</td></tr>
             <?php else: ?>
               <?php foreach ($rows as $row): $id = (int)$row['id']; ?>
-                <tr>
+                <tr data-id="<?= $id ?>" data-sort-order="<?= (int)($row['sort_order'] ?? 0) ?>">
+                  <td class="drag-handle" style="cursor:grab; text-align:center; user-select:none; background:#f8f9fa;" title="ドラッグして並び替え">
+                    <span style="display:inline-block; font-size:18px; color:#6c757d;">⋮⋮</span>
+                  </td>
                   <td><?= $id ?></td>
                   <td><?= htmlspecialchars((string)$row['name'], ENT_QUOTES, 'UTF-8') ?></td>
                   <td><?= htmlspecialchars((string)($row['category'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
                   <td><?= htmlspecialchars((string)($row['slug'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
-                  <td><input type="number" name="orders[<?= $id ?>]" value="<?= (int)($row['sort_order'] ?? 0) ?>" style="width:80px;" form="sort-form"></td>
+                  <td><input type="number" name="orders[<?= $id ?>]" value="<?= (int)($row['sort_order'] ?? 0) ?>" style="width:80px;" form="sort-form" class="sort-order-input"></td>
                   <td>
                     <a href="/admin/tags/edit.php?id=<?= $id ?>">編集</a>
                     <form method="post" action="" style="display:inline; margin-left:8px;" onsubmit="return confirm('削除してよろしいですか？');">
@@ -179,5 +183,193 @@ renderLayout('タグ一覧', function () use ($rows, $q, $categoryFilter, $sortK
         <button type="submit" form="sort-form">並び順を保存</button>
       </div>
     <?php endif; ?>
+
+    <script>
+    (function() {
+      const tbody = document.getElementById('sortable-tbody');
+      if (!tbody) return;
+
+      let draggedRow = null;
+      let placeholder = null;
+
+      function createPlaceholder() {
+        if (!placeholder) {
+          placeholder = document.createElement('tr');
+          placeholder.style.height = '40px';
+          placeholder.innerHTML = '<td colspan="7" style="border: 2px dashed #0d6efd; background: #f0f8ff;"></td>';
+        }
+        return placeholder;
+      }
+
+      function getDragAfterElement(container, y) {
+        const draggableElements = Array.from(container.querySelectorAll('tr[data-id]')).filter(el => el !== draggedRow);
+        
+        return draggableElements.reduce((closest, child) => {
+          const box = child.getBoundingClientRect();
+          const offset = y - box.top - box.height / 2;
+          
+          if (offset < 0 && offset > closest.offset) {
+            return { offset: offset, element: child };
+          } else {
+            return closest;
+          }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+      }
+
+      function updateSortOrders() {
+        const rows = Array.from(tbody.querySelectorAll('tr[data-id]'));
+        rows.forEach((row, index) => {
+          const input = row.querySelector('.sort-order-input');
+          if (input) {
+            input.value = index + 1;
+          }
+        });
+      }
+
+      const rows = Array.from(tbody.querySelectorAll('tr[data-id]'));
+      
+      rows.forEach((row) => {
+        const dragHandle = row.querySelector('.drag-handle');
+        if (!dragHandle) return;
+
+        row.draggable = false;
+        // ハンドル操作時のみドラッグ可能にする
+        dragHandle.addEventListener('mousedown', function() {
+          row.draggable = true;
+        });
+        dragHandle.addEventListener('mouseup', function() {
+          // ドロップで解除
+        });
+        row.classList.add('sortable-row');
+
+        row.addEventListener('dragstart', function(e) {
+          draggedRow = this;
+          this.classList.add('dragging');
+          this.style.opacity = '0.5';
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/html', '');
+        });
+
+        row.addEventListener('dragend', function(e) {
+          this.style.opacity = '';
+          this.classList.remove('dragging');
+          if (placeholder && placeholder.parentNode) {
+            placeholder.parentNode.removeChild(placeholder);
+          }
+          updateSortOrders();
+          draggedRow = null;
+        });
+
+        row.addEventListener('dragover', function(e) {
+          if (e.preventDefault) e.preventDefault();
+          // 位置決めはtbodyで実施
+          return false;
+        });
+
+        row.addEventListener('dragenter', function(e) {
+          if (this !== draggedRow) {
+            e.preventDefault();
+          }
+        });
+
+        row.addEventListener('drop', function(e) {
+          if (e.stopPropagation) e.stopPropagation();
+          // dropはtbodyで処理
+          return false;
+        });
+      });
+
+      // tbody全体で広い当たり判定
+      tbody.addEventListener('dragover', function(e) {
+        if (e.preventDefault) e.preventDefault();
+        if (!draggedRow) return false;
+        e.dataTransfer.dropEffect = 'move';
+        const afterElement = getDragAfterElement(tbody, e.clientY);
+        createPlaceholder();
+        if (afterElement == null) {
+          if (tbody.lastElementChild !== placeholder) tbody.appendChild(placeholder);
+        } else {
+          if (afterElement !== placeholder) tbody.insertBefore(placeholder, afterElement);
+        }
+        return false;
+      });
+
+      tbody.addEventListener('drop', function(e) {
+        if (e.preventDefault) e.preventDefault();
+        if (!draggedRow || !placeholder || !placeholder.parentNode) return false;
+        tbody.insertBefore(draggedRow, placeholder);
+        tbody.removeChild(placeholder);
+        updateSortOrders();
+        const form = document.getElementById('sort-form');
+        if (form) setTimeout(function(){ form.submit(); }, 50);
+        // ドラッグ終了: ハンドル時のみドラッグ可能に戻す
+        draggedRow.draggable = false;
+        draggedRow = null;
+        return false;
+      });
+
+      // ページ全体での広域ドロップ対応（table外でもドロップ可能）
+      document.addEventListener('dragover', function(e) {
+        if (!draggedRow) return;
+        // テーブル内はtbody側で処理
+        if (e.target && typeof e.target.closest === 'function' && e.target.closest('#sortable-tbody')) return;
+        e.preventDefault();
+        const rect = tbody.getBoundingClientRect();
+        const y = e.clientY;
+        createPlaceholder();
+        const first = tbody.querySelector('tr[data-id]');
+        if (!first) return;
+        if (y < rect.top) {
+          // テーブル上側にドロップ → 先頭
+          if (placeholder !== first) tbody.insertBefore(placeholder, first);
+        } else if (y > rect.bottom) {
+          // テーブル下側にドロップ → 末尾
+          if (tbody.lastElementChild !== placeholder) tbody.appendChild(placeholder);
+        } else {
+          // テーブル領域近辺 → 近傍位置
+          const afterElement = getDragAfterElement(tbody, y);
+          if (afterElement == null) {
+            if (tbody.lastElementChild !== placeholder) tbody.appendChild(placeholder);
+          } else if (afterElement !== placeholder) {
+            tbody.insertBefore(placeholder, afterElement);
+          }
+        }
+      });
+
+      document.addEventListener('drop', function(e) {
+        if (!draggedRow) return;
+        // テーブル内はtbodyで処理するためスキップ
+        if (e.target && typeof e.target.closest === 'function' && e.target.closest('#sortable-tbody')) return;
+        e.preventDefault();
+        if (placeholder && placeholder.parentNode === tbody) {
+          tbody.insertBefore(draggedRow, placeholder);
+          tbody.removeChild(placeholder);
+          updateSortOrders();
+          const form = document.getElementById('sort-form');
+          if (form) setTimeout(function(){ form.submit(); }, 50);
+        }
+        draggedRow.draggable = false;
+        draggedRow = null;
+      });
+
+      // ドラッグ中のスタイル
+      const style = document.createElement('style');
+      style.textContent = `
+        .sortable-row.dragging {
+          opacity: 0.5;
+        }
+        .sortable-row:hover .drag-handle {
+          background: #e9ecef;
+        }
+        .sortable-row .drag-handle:active {
+          cursor: grabbing;
+        }
+        .sortable-row .drag-handle {
+          cursor: grab;
+        }
+      `;
+      document.head.appendChild(style);
+    })();
+    </script>
     <?php
 });

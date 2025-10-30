@@ -13,65 +13,56 @@ function redirectWithNotice(string $notice): void {
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     requireValidCsrfOrAbort();
-    $action = getPostEnum('action', ['toggle_active', 'move_up', 'move_down', 'delete'], '');
-    $id = getPostInt('id', 0);
+    $action = isset($_POST['action']) ? (string)$_POST['action'] : '';
 
-    if (!$pdo || $id <= 0 || $action === '') {
+    if (!$pdo || $action === '') {
         redirectWithNotice('error');
     }
 
     try {
         if ($action === 'toggle_active') {
+            $id = getPostInt('id', 0);
+            if ($id <= 0) {
+                redirectWithNotice('error');
+            }
             $stmt = $pdo->prepare('UPDATE ad_banners SET is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END, updated_at = NOW() WHERE id = :id');
             $stmt->bindValue(':id', $id, PDO::PARAM_INT);
             $stmt->execute();
             redirectWithNotice($stmt->rowCount() > 0 ? 'toggled' : 'error');
         } elseif ($action === 'delete') {
+            $id = getPostInt('id', 0);
+            if ($id <= 0) {
+                redirectWithNotice('error');
+            }
             $stmt = $pdo->prepare('DELETE FROM ad_banners WHERE id = :id');
             $stmt->bindValue(':id', $id, PDO::PARAM_INT);
             $stmt->execute();
             redirectWithNotice($stmt->rowCount() > 0 ? 'deleted' : 'error');
-        } else {
-            $pdo->beginTransaction();
-            $stmtCurrent = $pdo->prepare('SELECT id, sort_order FROM ad_banners WHERE id = :id LIMIT 1 FOR UPDATE');
-            $stmtCurrent->bindValue(':id', $id, PDO::PARAM_INT);
-            $stmtCurrent->execute();
-            $current = $stmtCurrent->fetch(PDO::FETCH_ASSOC);
-            if (!$current) {
-                $pdo->rollBack();
+        } elseif ($action === 'sort') {
+            $orders = isset($_POST['orders']) && is_array($_POST['orders']) ? $_POST['orders'] : [];
+            if ($orders) {
+                $pdo->beginTransaction();
+                $stmt = $pdo->prepare('UPDATE ad_banners SET sort_order = :sort_order, updated_at = NOW() WHERE id = :id');
+                foreach ($orders as $id => $value) {
+                    $id = filter_var($id, FILTER_VALIDATE_INT);
+                    $sortOrder = filter_var($value, FILTER_VALIDATE_INT);
+                    if ($id === false || $sortOrder === false) {
+                        continue;
+                    }
+                    $stmt->bindValue(':id', (int)$id, PDO::PARAM_INT);
+                    $stmt->bindValue(':sort_order', (int)$sortOrder, PDO::PARAM_INT);
+                    $stmt->execute();
+                }
+                $pdo->commit();
+                redirectWithNotice('reordered');
+            } else {
                 redirectWithNotice('error');
             }
-            $sortOrder = (int)$current['sort_order'];
-            if ($action === 'move_up') {
-                $stmtNeighbor = $pdo->prepare('SELECT id, sort_order FROM ad_banners WHERE (sort_order < :sort_order) OR (sort_order = :sort_order AND id < :id) ORDER BY sort_order DESC, id DESC LIMIT 1 FOR UPDATE');
-            } else {
-                $stmtNeighbor = $pdo->prepare('SELECT id, sort_order FROM ad_banners WHERE (sort_order > :sort_order) OR (sort_order = :sort_order AND id > :id) ORDER BY sort_order ASC, id ASC LIMIT 1 FOR UPDATE');
-            }
-            $stmtNeighbor->bindValue(':sort_order', $sortOrder, PDO::PARAM_INT);
-            $stmtNeighbor->bindValue(':id', $id, PDO::PARAM_INT);
-            $stmtNeighbor->execute();
-            $neighbor = $stmtNeighbor->fetch(PDO::FETCH_ASSOC);
-            if (!$neighbor) {
-                $pdo->commit();
-                redirectWithNotice('boundary');
-            }
-            $neighborId = (int)$neighbor['id'];
-            $neighborSort = (int)$neighbor['sort_order'];
-
-            $stmtUpdateCurrent = $pdo->prepare('UPDATE ad_banners SET sort_order = :sort_order, updated_at = NOW() WHERE id = :id');
-            $stmtUpdateCurrent->bindValue(':sort_order', $neighborSort, PDO::PARAM_INT);
-            $stmtUpdateCurrent->bindValue(':id', $id, PDO::PARAM_INT);
-            $stmtUpdateCurrent->execute();
-
-            $stmtUpdateNeighbor = $pdo->prepare('UPDATE ad_banners SET sort_order = :sort_order, updated_at = NOW() WHERE id = :id');
-            $stmtUpdateNeighbor->bindValue(':sort_order', $sortOrder, PDO::PARAM_INT);
-            $stmtUpdateNeighbor->bindValue(':id', $neighborId, PDO::PARAM_INT);
-            $stmtUpdateNeighbor->execute();
-            $pdo->commit();
-            redirectWithNotice('reordered');
+        } else {
+            redirectWithNotice('error');
         }
     } catch (Throwable $e) {
-        if ($pdo->inTransaction()) {
+        if ($pdo && $pdo->inTransaction()) {
             $pdo->rollBack();
         }
         error_log('[admin] ads/index action error: ' . $e->getMessage());
@@ -123,11 +114,17 @@ renderLayout('広告バナー一覧', function () use ($pdo) {
       </div>
     <?php endif; ?>
 
+    <form id="sort-form" method="post" action="" style="margin:0;">
+      <?php csrf_field(); ?>
+      <input type="hidden" name="action" value="sort">
+    </form>
+
     <div class="card shadow-sm">
       <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
           <thead class="table-light">
             <tr>
+              <th scope="col" style="width:40px;"></th>
               <th scope="col" style="width:90px;">表示順</th>
               <th scope="col" style="width:60px;">ID</th>
               <th scope="col">画像</th>
@@ -137,15 +134,20 @@ renderLayout('広告バナー一覧', function () use ($pdo) {
               <th scope="col" class="text-end" style="width:220px;">操作</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="sortable-tbody">
             <?php if (!$ads): ?>
               <tr>
-                <td colspan="7" class="text-center text-muted py-4">広告バナーが登録されていません。</td>
+                <td colspan="8" class="text-center text-muted py-4">広告バナーが登録されていません。</td>
               </tr>
             <?php else: ?>
               <?php foreach ($ads as $index => $ad): $id = (int)$ad['id']; ?>
-                <tr>
-                  <td><?= (int)$ad['sort_order'] ?></td>
+                <tr data-id="<?= $id ?>" data-sort-order="<?= (int)$ad['sort_order'] ?>">
+                  <td class="drag-handle" style="cursor:grab; text-align:center; user-select:none; background:#f8f9fa;" title="ドラッグして並び替え">
+                    <span style="display:inline-block; font-size:18px; color:#6c757d;">⋮⋮</span>
+                  </td>
+                  <td>
+                    <input type="number" name="orders[<?= $id ?>]" value="<?= (int)$ad['sort_order'] ?>" style="width:70px;" form="sort-form" class="sort-order-input">
+                  </td>
                   <td><?= $id ?></td>
                   <td>
                     <?php if (!empty($ad['image_url'])): ?>
@@ -165,18 +167,6 @@ renderLayout('広告バナー一覧', function () use ($pdo) {
                   </td>
                   <td class="text-end">
                     <div class="btn-group btn-group-sm" role="group">
-                      <form method="post" class="d-inline">
-                        <?php csrf_field(); ?>
-                        <input type="hidden" name="action" value="move_up">
-                        <input type="hidden" name="id" value="<?= $id ?>">
-                        <button type="submit" class="btn btn-outline-secondary" title="上へ">↑</button>
-                      </form>
-                      <form method="post" class="d-inline">
-                        <?php csrf_field(); ?>
-                        <input type="hidden" name="action" value="move_down">
-                        <input type="hidden" name="id" value="<?= $id ?>">
-                        <button type="submit" class="btn btn-outline-secondary" title="下へ">↓</button>
-                      </form>
                       <form method="post" class="d-inline">
                         <?php csrf_field(); ?>
                         <input type="hidden" name="action" value="toggle_active">
@@ -201,5 +191,199 @@ renderLayout('広告バナー一覧', function () use ($pdo) {
         </table>
       </div>
     </div>
+
+    <?php if ($ads): ?>
+      <div style="margin-top:12px;">
+        <button type="submit" form="sort-form" class="btn btn-primary">並び順を保存</button>
+      </div>
+    <?php endif; ?>
+
+    <script>
+    (function() {
+      const tbody = document.getElementById('sortable-tbody');
+      if (!tbody) return;
+
+      let draggedRow = null;
+      let placeholder = null;
+
+      function createPlaceholder() {
+        if (!placeholder) {
+          placeholder = document.createElement('tr');
+          placeholder.style.height = '40px';
+          placeholder.innerHTML = '<td colspan="8" style="border: 2px dashed #0d6efd; background: #f0f8ff;"></td>';
+        }
+        return placeholder;
+      }
+
+      function getDragAfterElement(container, y) {
+        const draggableElements = Array.from(container.querySelectorAll('tr[data-id]')).filter(el => el !== draggedRow);
+        
+        return draggableElements.reduce((closest, child) => {
+          const box = child.getBoundingClientRect();
+          const offset = y - box.top - box.height / 2;
+          
+          if (offset < 0 && offset > closest.offset) {
+            return { offset: offset, element: child };
+          } else {
+            return closest;
+          }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+      }
+
+      function updateSortOrders() {
+        const rows = Array.from(tbody.querySelectorAll('tr[data-id]'));
+        rows.forEach((row, index) => {
+          const input = row.querySelector('.sort-order-input');
+          if (input) {
+            input.value = index + 1;
+          }
+        });
+      }
+
+      const rows = Array.from(tbody.querySelectorAll('tr[data-id]'));
+      
+      rows.forEach((row) => {
+        const dragHandle = row.querySelector('.drag-handle');
+        if (!dragHandle) return;
+
+        row.draggable = false;
+        // ハンドル操作時のみドラッグ可能にする
+        dragHandle.addEventListener('mousedown', function() {
+          row.draggable = true;
+        });
+        dragHandle.addEventListener('mouseup', function() {
+          // ドロップで解除
+        });
+        row.classList.add('sortable-row');
+
+        row.addEventListener('dragstart', function(e) {
+          draggedRow = this;
+          this.classList.add('dragging');
+          this.style.opacity = '0.5';
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/html', '');
+        });
+
+        row.addEventListener('dragend', function(e) {
+          this.style.opacity = '';
+          this.classList.remove('dragging');
+          if (placeholder && placeholder.parentNode) {
+            placeholder.parentNode.removeChild(placeholder);
+          }
+          updateSortOrders();
+          draggedRow = null;
+        });
+
+        row.addEventListener('dragover', function(e) {
+          if (e.preventDefault) e.preventDefault();
+          // 位置決めはtbody側で実施
+          return false;
+        });
+
+        row.addEventListener('dragenter', function(e) {
+          if (this !== draggedRow) {
+            e.preventDefault();
+          }
+        });
+
+        row.addEventListener('drop', function(e) {
+          if (e.stopPropagation) e.stopPropagation();
+          // dropはtbody側で処理
+          return false;
+        });
+      });
+
+      // tbody全体で広い当たり判定
+      tbody.addEventListener('dragover', function(e) {
+        if (e.preventDefault) e.preventDefault();
+        if (!draggedRow) return false;
+        e.dataTransfer.dropEffect = 'move';
+        const afterElement = getDragAfterElement(tbody, e.clientY);
+        createPlaceholder();
+        if (afterElement == null) {
+          if (tbody.lastElementChild !== placeholder) tbody.appendChild(placeholder);
+        } else {
+          if (afterElement !== placeholder) tbody.insertBefore(placeholder, afterElement);
+        }
+        return false;
+      });
+
+      tbody.addEventListener('drop', function(e) {
+        if (e.preventDefault) e.preventDefault();
+        if (!draggedRow || !placeholder || !placeholder.parentNode) return false;
+        tbody.insertBefore(draggedRow, placeholder);
+        tbody.removeChild(placeholder);
+        updateSortOrders();
+        const form = document.getElementById('sort-form');
+        if (form) setTimeout(function(){ form.submit(); }, 50);
+        // ドラッグ終了: ハンドル時のみドラッグ可能に戻す
+        draggedRow.draggable = false;
+        draggedRow = null;
+        return false;
+      });
+
+      // ページ全体での広域ドロップ対応（table外でもドロップ可能）
+      document.addEventListener('dragover', function(e) {
+        if (!draggedRow) return;
+        // テーブル内はtbody側で処理
+        if (e.target && typeof e.target.closest === 'function' && e.target.closest('#sortable-tbody')) return;
+        e.preventDefault();
+        const rect = tbody.getBoundingClientRect();
+        const y = e.clientY;
+        createPlaceholder();
+        const first = tbody.querySelector('tr[data-id]');
+        if (!first) return;
+        if (y < rect.top) {
+          // テーブル上側にドロップ → 先頭
+          if (placeholder !== first) tbody.insertBefore(placeholder, first);
+        } else if (y > rect.bottom) {
+          // テーブル下側にドロップ → 末尾
+          if (tbody.lastElementChild !== placeholder) tbody.appendChild(placeholder);
+        } else {
+          // テーブル領域近辺 → 近傍位置
+          const afterElement = getDragAfterElement(tbody, y);
+          if (afterElement == null) {
+            if (tbody.lastElementChild !== placeholder) tbody.appendChild(placeholder);
+          } else if (afterElement !== placeholder) {
+            tbody.insertBefore(placeholder, afterElement);
+          }
+        }
+      });
+
+      document.addEventListener('drop', function(e) {
+        if (!draggedRow) return;
+        // テーブル内はtbodyで処理するためスキップ
+        if (e.target && typeof e.target.closest === 'function' && e.target.closest('#sortable-tbody')) return;
+        e.preventDefault();
+        if (placeholder && placeholder.parentNode === tbody) {
+          tbody.insertBefore(draggedRow, placeholder);
+          tbody.removeChild(placeholder);
+          updateSortOrders();
+          const form = document.getElementById('sort-form');
+          if (form) setTimeout(function(){ form.submit(); }, 50);
+        }
+        draggedRow.draggable = false;
+        draggedRow = null;
+      });
+
+      // ドラッグ中のスタイル
+      const style = document.createElement('style');
+      style.textContent = `
+        .sortable-row.dragging {
+          opacity: 0.5;
+        }
+        .sortable-row:hover .drag-handle {
+          background: #e9ecef !important;
+        }
+        .sortable-row .drag-handle:active {
+          cursor: grabbing;
+        }
+        .sortable-row .drag-handle {
+          cursor: grab;
+        }
+      `;
+      document.head.appendChild(style);
+    })();
+    </script>
     <?php
 });
