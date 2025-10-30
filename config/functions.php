@@ -70,13 +70,71 @@ function get_job_list_with_images() {
  * @return array|false お知らせデータ、失敗時はfalse
  */
 function get_announcement_list($limit = 5) {
-    $sql = "SELECT id, title, slug, published_at, created_at 
-            FROM announcements 
-            WHERE status = 'published' 
-            AND deleted_at IS NULL 
-            ORDER BY created_at DESC 
+    $sql = "SELECT id, title, slug, published_at, created_at
+            FROM announcements
+            WHERE status = 'published'
+            AND deleted_at IS NULL
+            ORDER BY created_at DESC
             LIMIT ?";
     return executeQuery($sql, [$limit]);
+}
+
+/**
+ * 単一のお知らせをIDで取得する
+ *
+ * @param int $id お知らせID
+ * @return array|null 見つかった場合はお知らせ配列、存在しない場合はnull
+ */
+function get_announcement_by_id($id) {
+    $id = (int)$id;
+    if ($id <= 0) {
+        return null;
+    }
+
+    $sql = <<<SQL
+SELECT id, title, slug, body_html, status, published_at, created_at, updated_at
+FROM announcements
+WHERE id = ?
+  AND status = 'published'
+  AND deleted_at IS NULL
+LIMIT 1
+SQL;
+    $row = executeQuerySingle($sql, [$id]);
+
+    if ($row === false || empty($row)) {
+        return null;
+    }
+
+    return $row;
+}
+
+/**
+ * 単一のお知らせをスラッグで取得する
+ *
+ * @param string $slug スラッグ
+ * @return array|null 見つかった場合はお知らせ配列、存在しない場合はnull
+ */
+function get_announcement_by_slug($slug) {
+    $slug = trim((string)$slug);
+    if ($slug === '') {
+        return null;
+    }
+
+    $sql = <<<SQL
+SELECT id, title, slug, body_html, status, published_at, created_at, updated_at
+FROM announcements
+WHERE slug = ?
+  AND status = 'published'
+  AND deleted_at IS NULL
+LIMIT 1
+SQL;
+    $row = executeQuerySingle($sql, [$slug]);
+
+    if ($row === false || empty($row)) {
+        return null;
+    }
+
+    return $row;
 }
 
 /**
