@@ -49,16 +49,11 @@ HTML;
         $ariaCurrent = $activeClass ? ' aria-current="page"' : '';
         echo '        <a class="nav-link' . $activeClass . '"' . $ariaCurrent . ' href="' . htmlspecialchars($item['href']) . '">' . htmlspecialchars($item['label']) . "</a>\n";
     }
-
-    echo <<<HTML
-      </nav>
-      <div class="mt-auto pt-4 text-secondary small">&copy; {$year}</div>
-    </aside>
-    <div class="admin-sidebar-spacer col-auto d-none d-md-block" aria-hidden="true"></div>
-    <main class="admin-main col ms-auto px-4 py-4 d-flex flex-column min-vh-100">
-HTML;
-
+    echo "    </nav>\n  </aside>\n  <main class=\"content\">\n    <div class=\"container-fluid py-4\">\n";
     $contentRenderer();
+    echo "    </div>\n  </main>\n</div>\n";
+    renderFooter();
+}
 
     echo <<<HTML
     </main>

@@ -83,41 +83,62 @@ renderLayout('求人画像', function () {
     }
 
     ?>
-    <h1>求人画像</h1>
-    <p><a href="/admin/jobs/edit.php?id=<?= (int)$jobId ?>">求人編集に戻る</a></p>
+    <h1 class="mb-3">求人画像</h1>
+    <p><a href="/admin/jobs/edit.php?id=<?= (int)$jobId ?>" class="btn btn-outline-secondary btn-sm">求人編集に戻る</a></p>
 
-    <form method="post" action="" style="margin:12px 0;">
-      <?php csrf_field(); ?>
-      <input type="hidden" name="action" value="reorder">
-      <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse; width:100%; background:#fff;">
-        <thead><tr><th>ID</th><th>画像</th><th>パス</th><th>並び順</th><th>作成</th><th>操作</th></tr></thead>
-        <tbody>
-          <?php if (!$images): ?>
-            <tr><td colspan="6" style="text-align:center; color:#64748b;">画像がありません</td></tr>
-          <?php else: ?>
-            <?php foreach ($images as $im): $id=(int)$im['id']; $path=(string)$im['path']; $so=(int)$im['sort_order']; ?>
+    <form method="post" action="" class="card shadow-sm mt-4">
+      <div class="card-body">
+        <?php csrf_field(); ?>
+        <input type="hidden" name="action" value="reorder">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
               <tr>
-                <td><?= $id ?></td>
-                <td><img src="<?= htmlspecialchars($path, ENT_QUOTES, 'UTF-8') ?>" alt="" style="max-height:80px"></td>
-                <td><?= htmlspecialchars($path, ENT_QUOTES, 'UTF-8') ?></td>
-                <td><input type="number" name="order[<?= $id ?>]" value="<?= $so ?>" min="0" style="width:80px"></td>
-                <td><?= htmlspecialchars((string)($im['created_at'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
-                <td>
-                  <form method="post" action="" onsubmit="return confirm('削除しますか？');" style="display:inline">
-                    <?php csrf_field(); ?>
-                    <input type="hidden" name="action" value="delete">
-                    <input type="hidden" name="image_id" value="<?= $id ?>">
-                    <button type="submit">削除</button>
-                  </form>
-                </td>
+                <th scope="col">ID</th>
+                <th scope="col">画像</th>
+                <th scope="col">パス</th>
+                <th scope="col">並び順</th>
+                <th scope="col">作成</th>
+                <th scope="col" class="text-end">操作</th>
               </tr>
-            <?php endforeach; ?>
-          <?php endif; ?>
-        </tbody>
-      </table>
-      <div style="margin-top:8px;"><button type="submit">並び順を保存</button></div>
+            </thead>
+            <tbody>
+              <?php if (!$images): ?>
+                <tr>
+                  <td colspan="6" class="text-center text-muted py-4">画像がありません</td>
+                </tr>
+              <?php else: ?>
+                <?php foreach ($images as $im): $id=(int)$im['id']; $path=(string)$im['path']; $so=(int)$im['sort_order']; ?>
+                  <tr>
+                    <td><?= $id ?></td>
+                    <td>
+                      <?php if ($path !== ''): ?>
+                        <img src="<?= htmlspecialchars($path, ENT_QUOTES, 'UTF-8') ?>" alt="" class="img-fluid" style="max-height:80px;">
+                      <?php endif; ?>
+                    </td>
+                    <td class="text-break"><?= htmlspecialchars($path, ENT_QUOTES, 'UTF-8') ?></td>
+                    <td style="width:120px;">
+                      <input type="number" class="form-control form-control-sm" name="order[<?= $id ?>]" value="<?= $so ?>" min="0">
+                    </td>
+                    <td><?= htmlspecialchars((string)($im['created_at'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+                    <td class="text-end">
+                      <form method="post" action="" class="d-inline" onsubmit="return confirm('削除しますか？');">
+                        <?php csrf_field(); ?>
+                        <input type="hidden" name="action" value="delete">
+                        <input type="hidden" name="image_id" value="<?= $id ?>">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">削除</button>
+                      </form>
+                    </td>
+                  </tr>
+                <?php endforeach; ?>
+              <?php endif; ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card-footer text-end">
+        <button type="submit" class="btn btn-primary">並び順を保存</button>
+      </div>
     </form>
     <?php
 });
-
-

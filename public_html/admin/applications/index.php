@@ -56,49 +56,80 @@ renderLayout('応募一覧', function () {
     $totalPages = max(1, (int)ceil($total / $perPage));
 
     ?>
-    <h1>応募一覧</h1>
-    <form method="get" class="filters" style="margin-bottom:16px; display:flex; gap:8px; flex-wrap:wrap;">
-      <input type="text" name="q" value="<?= htmlspecialchars($q, ENT_QUOTES, 'UTF-8') ?>" placeholder="氏名/メール">
-      <input type="date" name="from" value="<?= htmlspecialchars($from, ENT_QUOTES, 'UTF-8') ?>"> 〜
-      <input type="date" name="to" value="<?= htmlspecialchars($to, ENT_QUOTES, 'UTF-8') ?>">
-      <button type="submit">検索</button>
+    <h1 class="mb-4">応募一覧</h1>
+    <form method="get" class="row gy-2 gx-3 align-items-end mb-4">
+      <div class="col-sm-6 col-md-4 col-lg-3">
+        <label for="filter-q" class="form-label">氏名/メール</label>
+        <input type="text" class="form-control" id="filter-q" name="q" value="<?= htmlspecialchars($q, ENT_QUOTES, 'UTF-8') ?>" placeholder="検索キーワード">
+      </div>
+      <div class="col-sm-6 col-md-3 col-lg-2">
+        <label for="filter-from" class="form-label">応募日（開始）</label>
+        <input type="date" class="form-control" id="filter-from" name="from" value="<?= htmlspecialchars($from, ENT_QUOTES, 'UTF-8') ?>">
+      </div>
+      <div class="col-sm-6 col-md-3 col-lg-2">
+        <label for="filter-to" class="form-label">応募日（終了）</label>
+        <input type="date" class="form-control" id="filter-to" name="to" value="<?= htmlspecialchars($to, ENT_QUOTES, 'UTF-8') ?>">
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-primary">検索</button>
+        <a href="/admin/applications/" class="btn btn-outline-secondary ms-2">リセット</a>
+      </div>
     </form>
 
-    <div class="table-wrap">
-      <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse; width:100%; background:#fff;">
-        <thead><tr><th>ID</th><th>氏名</th><th>メール</th><th>求人</th><th>作成</th><th>操作</th></tr></thead>
-        <tbody>
-          <?php if (!$rows): ?>
-            <tr><td colspan="6" style="text-align:center; color:#64748b;">応募がありません</td></tr>
-          <?php else: ?>
-            <?php foreach ($rows as $r): $id = (int)$r['id']; $name = (string)$r['name']; $email=(string)$r['email'];
-              $nameMask = mb_substr($name, 0, 1, 'UTF-8') . str_repeat('＊', max(0, mb_strlen($name, 'UTF-8') - 1));
-              $emailMask = preg_replace('/(^.).*(@.*$)/', '$1***$2', $email);
-            ?>
+    <div class="card shadow-sm">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th scope="col">ID</th>
+              <th scope="col">氏名</th>
+              <th scope="col">メール</th>
+              <th scope="col">求人</th>
+              <th scope="col">作成</th>
+              <th scope="col" class="text-end">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php if (!$rows): ?>
               <tr>
-                <td><?= $id ?></td>
-                <td><?= htmlspecialchars($nameMask, ENT_QUOTES, 'UTF-8') ?></td>
-                <td><?= htmlspecialchars($emailMask, ENT_QUOTES, 'UTF-8') ?></td>
-                <td><?= htmlspecialchars((string)($r['job_title'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
-                <td><?= htmlspecialchars((string)$r['created_at'], ENT_QUOTES, 'UTF-8') ?></td>
-                <td><a href="/admin/applications/show.php?id=<?= $id ?>">詳細</a></td>
+                <td colspan="6" class="text-center text-muted py-4">応募がありません</td>
               </tr>
-            <?php endforeach; ?>
-          <?php endif; ?>
-        </tbody>
-      </table>
+            <?php else: ?>
+              <?php foreach ($rows as $r): $id = (int)$r['id']; $name = (string)$r['name']; $email=(string)$r['email'];
+                $nameMask = mb_substr($name, 0, 1, 'UTF-8') . str_repeat('＊', max(0, mb_strlen($name, 'UTF-8') - 1));
+                $emailMask = preg_replace('/(^.).*(@.*$)/', '$1***$2', $email);
+              ?>
+                <tr>
+                  <td><?= $id ?></td>
+                  <td><?= htmlspecialchars($nameMask, ENT_QUOTES, 'UTF-8') ?></td>
+                  <td><?= htmlspecialchars($emailMask, ENT_QUOTES, 'UTF-8') ?></td>
+                  <td><?= htmlspecialchars((string)($r['job_title'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+                  <td><?= htmlspecialchars((string)$r['created_at'], ENT_QUOTES, 'UTF-8') ?></td>
+                  <td class="text-end">
+                    <a href="/admin/applications/show.php?id=<?= $id ?>" class="btn btn-outline-primary btn-sm">詳細</a>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+            <?php endif; ?>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <?php if ($totalPages > 1): ?>
-      <div class="pagination" style="margin-top:12px; display:flex; gap:6px; flex-wrap:wrap;">
-        <?php $baseParams = $_GET; for ($p = 1; $p <= $totalPages; $p++): $baseParams['page'] = $p; $href = '/admin/applications/?' . http_build_query($baseParams); ?>
-          <?php if ($p === $page): ?>
-            <span style="padding:4px 8px; background:#1e293b; color:#fff; border-radius:4px;"><?= $p ?></span>
-          <?php else: ?>
-            <a href="<?= htmlspecialchars($href, ENT_QUOTES, 'UTF-8') ?>" style="padding:4px 8px; background:#e2e8f0; color:#111; border-radius:4px; text-decoration:none;"><?= $p ?></a>
-          <?php endif; ?>
-        <?php endfor; ?>
-      </div>
+      <nav aria-label="応募ページネーション" class="mt-4">
+        <ul class="pagination flex-wrap">
+          <?php $baseParams = $_GET; for ($p = 1; $p <= $totalPages; $p++): $baseParams['page'] = $p; $href = '/admin/applications/?' . http_build_query($baseParams); ?>
+            <li class="page-item<?= $p === $page ? ' active' : '' ?>">
+              <?php if ($p === $page): ?>
+                <span class="page-link"><?= $p ?></span>
+              <?php else: ?>
+                <a class="page-link" href="<?= htmlspecialchars($href, ENT_QUOTES, 'UTF-8') ?>"><?= $p ?></a>
+              <?php endif; ?>
+            </li>
+          <?php endfor; ?>
+        </ul>
+      </nav>
     <?php endif; ?>
     <?php
 });
