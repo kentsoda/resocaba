@@ -1,61 +1,299 @@
+<?php
+require_once __DIR__ . '/../config/functions.php';
+
+$announcementId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$slugParam = isset($_GET['slug']) ? trim((string)$_GET['slug']) : '';
+
+if ($announcementId <= 0) {
+    $requestUri = $_SERVER['REQUEST_URI'] ?? '';
+    if (preg_match('#/announcement/(\d+)/?#', $requestUri, $matches)) {
+        $announcementId = (int)$matches[1];
+    }
+}
+
+$announcement = null;
+if ($announcementId > 0) {
+    $announcement = get_announcement_by_id($announcementId);
+}
+
+if (!$announcement && $slugParam !== '') {
+    $announcement = get_announcement_by_slug($slugParam);
+    if ($announcement) {
+        $announcementId = (int)$announcement['id'];
+    }
+}
+
+if (!$announcement && $slugParam === '') {
+    $requestUri = $_SERVER['REQUEST_URI'] ?? '';
+    if (preg_match('#/announcement/([^/]+)/?#', $requestUri, $matches)) {
+        $slugParam = $matches[1];
+        $announcement = get_announcement_by_slug($slugParam);
+        if ($announcement) {
+            $announcementId = (int)$announcement['id'];
+        }
+    }
+}
+
+$announcementTitle = $announcement ? (string)$announcement['title'] : 'お知らせが見つかりません';
+$host = $_SERVER['HTTP_HOST'] ?? 'example.com';
+$pageUrl = 'https://' . $host . '/announcement/' . ($announcementId > 0 ? $announcementId . '/' : '');
+$defaultOgImage = '/assets/images/articles/news-ogp-1200x630.jpg';
+
+if ($announcement) {
+    $bodyHtml = $announcement['body_html'] ?? '';
+    $bodyText = strip_tags($bodyHtml);
+    $descriptionSource = trim(preg_replace('/\s+/u', ' ', $bodyText));
+    $description = mb_strimwidth($descriptionSource, 0, 160, '…', 'UTF-8');
+    $title = $announcementTitle . '｜お知らせ｜海外リゾキャバ求人.COM';
+    $og_title = $title;
+    $og_description = $description;
+    $og_type = 'article';
+    $og_url = $pageUrl;
+    $og_image = $defaultOgImage;
+    $publishedAt = $announcement['published_at'] ?? $announcement['created_at'] ?? null;
+    $updatedAt = $announcement['updated_at'] ?? $publishedAt;
+    $publishedDate = $publishedAt ? date('Y.m.d', strtotime($publishedAt)) : '';
+    $publishedIso = $publishedAt ? date('c', strtotime($publishedAt)) : '';
+    $updatedIso = $updatedAt ? date('c', strtotime($updatedAt)) : $publishedIso;
+} else {
+    http_response_code(404);
+    $bodyHtml = '<p>お探しのお知らせは見つかりませんでした。</p>';
+    $description = 'お探しのお知らせは存在しないか、公開が終了しました。';
+    $title = 'お知らせが見つかりません｜海外リゾキャバ求人.COM';
+    $og_title = $title;
+    $og_description = $description;
+    $og_type = 'article';
+    $og_url = $pageUrl;
+    $og_image = $defaultOgImage;
+    $publishedDate = '';
+    $publishedIso = '';
+    $updatedIso = '';
+}
+
+$canonical = $announcement ? '/announcement/' . $announcementId . '/' : '';
+
+$ogImageAbsolute = (strpos($og_image, 'http://') === 0 || strpos($og_image, 'https://') === 0)
+    ? $og_image
+    : 'https://' . $host . $og_image;
+
+$jsonLdData = null;
+if ($announcement) {
+    $jsonLdData = [
+        '@context' => 'https://schema.org',
+        '@graph' => [
+            [
+                '@type' => 'BreadcrumbList',
+                'itemListElement' => [
+                    [
+                        '@type' => 'ListItem',
+                        'position' => 1,
+                        'name' => 'トップ',
+                        'item' => 'https://' . $host . '/',
+                    ],
+                    [
+                        '@type' => 'ListItem',
+                        'position' => 2,
+                        'name' => 'お知らせ一覧',
+                        'item' => 'https://' . $host . '/announcements/',
+                    ],
+                    [
+                        '@type' => 'ListItem',
+                        'position' => 3,
+                        'name' => $announcementTitle,
+                    ],
+                ],
+            ],
+            [
+                '@type' => 'NewsArticle',
+                'headline' => $announcementTitle,
+                'datePublished' => $publishedIso ?: null,
+                'dateModified' => $updatedIso ?: ($publishedIso ?: null),
+                'author' => [
+                    '@type' => 'Organization',
+                    'name' => '海外リゾキャバ求人.COM',
+                ],
+                'publisher' => [
+                    '@type' => 'Organization',
+                    'name' => '海外リゾキャバ求人.COM',
+                    'logo' => [
+                        '@type' => 'ImageObject',
+                        'url' => $ogImageAbsolute,
+                    ],
+                ],
+                'description' => $description,
+                'image' => $ogImageAbsolute,
+                'mainEntityOfPage' => $pageUrl,
+            ],
+        ],
+    ];
+}
+
+$job_list = get_job_list_with_images();
+$pickup_jobs = [];
+$new_jobs = [];
+if (is_array($job_list)) {
+    foreach ($job_list as $job) {
+        $meta = json_decode($job['meta_json'] ?? '', true);
+        if (!is_array($meta)) {
+            continue;
+        }
+        $sections = $meta['home_sections'] ?? [];
+        if (!is_array($sections)) {
+            $sections = [];
+        }
+        if (in_array('pickup', $sections, true)) {
+            $pickup_jobs[] = $job;
+        }
+        if (in_array('new', $sections, true)) {
+            $new_jobs[] = $job;
+        }
+    }
+    $sortJobs = function (&$jobs) {
+        usort($jobs, function ($a, $b) {
+            $timeA = $a['created_at'] ?? $a['published_at'] ?? $a['updated_at'] ?? '';
+            $timeB = $b['created_at'] ?? $b['published_at'] ?? $b['updated_at'] ?? '';
+            $tsA = $timeA ? strtotime($timeA) : 0;
+            $tsB = $timeB ? strtotime($timeB) : 0;
+            return $tsB <=> $tsA;
+        });
+    };
+    if (!empty($pickup_jobs)) {
+        $sortJobs($pickup_jobs);
+        $pickup_jobs = array_slice($pickup_jobs, 0, 8);
+    }
+    if (!empty($new_jobs)) {
+        $sortJobs($new_jobs);
+        $new_jobs = array_slice($new_jobs, 0, 8);
+    }
+} else {
+    $pickup_jobs = [];
+    $new_jobs = [];
+}
+
+if (!function_exists('build_job_card_context')) {
+    function build_job_card_context(array $job): array
+    {
+        $image = '/assets/images/jobs/no-image-1280w.jpg';
+        if (!empty($job['images']) && is_array($job['images'])) {
+            $firstImage = $job['images'][0] ?? null;
+            if (is_array($firstImage) && !empty($firstImage['image_url'])) {
+                $image = $firstImage['image_url'];
+            }
+        }
+
+        $locationParts = [];
+        if (!empty($job['city'])) {
+            $locationParts[] = $job['city'];
+        }
+        if (!empty($job['region_prefecture']) && !in_array($job['region_prefecture'], $locationParts, true)) {
+            $locationParts[] = $job['region_prefecture'];
+        }
+        if (!empty($job['country']) && !in_array($job['country'], $locationParts, true)) {
+            $locationParts[] = $job['country'];
+        }
+        $location = implode(' / ', array_filter($locationParts));
+
+        $employment = $job['employment_type'] ?? '';
+
+        $salaryMin = isset($job['salary_min']) ? (int)$job['salary_min'] : null;
+        $salaryMax = isset($job['salary_max']) ? (int)$job['salary_max'] : null;
+        $salaryUnit = $job['salary_unit'] ?? 'HOUR';
+        $unitLabel = '時給';
+        if ($salaryUnit === 'MONTH') {
+            $unitLabel = '月給';
+        } elseif ($salaryUnit === 'DAY') {
+            $unitLabel = '日給';
+        }
+        $salaryLabel = '';
+        if ($salaryMin !== null && $salaryMax !== null && $salaryMax > $salaryMin) {
+            $salaryLabel = sprintf('%s %s〜%s円', $unitLabel, number_format($salaryMin), number_format($salaryMax));
+        } elseif ($salaryMin !== null) {
+            $salaryLabel = sprintf('%s %s円', $unitLabel, number_format($salaryMin));
+        } elseif ($salaryMax !== null) {
+            $salaryLabel = sprintf('%s %s円', $unitLabel, number_format($salaryMax));
+        }
+
+        $meta = json_decode($job['meta_json'] ?? '', true);
+        $period = '';
+        $qualifications = [];
+        $additionalTags = [];
+        if (is_array($meta)) {
+            if (!empty($meta['period'])) {
+                $period = (string)$meta['period'];
+            }
+            if (!empty($meta['qualifications']) && is_array($meta['qualifications'])) {
+                foreach ($meta['qualifications'] as $qualification) {
+                    $qualification = trim((string)$qualification);
+                    if ($qualification !== '') {
+                        $qualifications[] = $qualification;
+                    }
+                }
+            }
+            if (!empty($meta['hours'])) {
+                $additionalTags[] = '勤務時間: ' . (string)$meta['hours'];
+            }
+            if (!empty($meta['holiday'])) {
+                $additionalTags[] = '休日: ' . (string)$meta['holiday'];
+            }
+            if (!empty($meta['job_code'])) {
+                $additionalTags[] = '求人コード: ' . (string)$meta['job_code'];
+            }
+        }
+
+        $benefits = [];
+        if (!empty($job['benefits_json'])) {
+            $decodedBenefits = json_decode($job['benefits_json'], true);
+            if (is_array($decodedBenefits)) {
+                foreach ($decodedBenefits as $benefit) {
+                    $benefit = trim((string)$benefit);
+                    if ($benefit !== '') {
+                        $benefits[] = $benefit;
+                    }
+                }
+            }
+        }
+
+        $tags = array_values(array_unique(array_filter(array_merge($benefits, $qualifications, $additionalTags))));
+
+        $descriptionSource = $job['description_text'] ?? '';
+        $description = trim(preg_replace('/\s+/u', ' ', (string)$descriptionSource));
+        if ($description === '' && !empty($job['description_html'])) {
+            $description = trim(strip_tags((string)$job['description_html']));
+        }
+        if ($description !== '') {
+            $description = mb_strimwidth($description, 0, 120, '…', 'UTF-8');
+        }
+
+        $updatedAt = $job['updated_at'] ?? ($job['published_at'] ?? ($job['created_at'] ?? ''));
+        $updatedDate = $updatedAt ? date('Y.m.d', strtotime($updatedAt)) : '';
+
+        return [
+            'id' => (int)($job['id'] ?? 0),
+            'title' => (string)($job['title'] ?? ''),
+            'image' => $image,
+            'location' => $location,
+            'employment' => (string)$employment,
+            'salary' => $salaryLabel,
+            'period' => $period,
+            'tags' => $tags,
+            'description' => $description !== '' ? $description : '求人の詳細はリンク先でご確認ください。',
+            'updatedDate' => $updatedDate,
+        ];
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <?php
-    $title = '【ベトナム】ハノイの新店舗「CRAZY CAT\'S」の求人情報を掲載しました。ああ｜お知らせ｜海外リゾキャバ求人.COM';
-    $description = 'ハノイに新規オープンした日本人オーナー店「CRAZY CAT\'S」の求人情報を掲載aaしました。未経験歓迎・寮費無料などの高待遇です。';
-    $og_title = $title; $og_description = $description;
-    $og_type = 'article'; $og_url = 'https://xs161700.xsrv.jp/announcement/1/';
-    $og_image = '/assets/images/articles/news-ogp-1200x630.jpg';
-    require_once __DIR__ . '/includes/header.php';
-    ?>
-
-    <!-- SEO: JSON-LD for Structured Data -->
+    <?php require_once __DIR__ . '/includes/header.php'; ?>
+    <?php if ($canonical !== ''): ?>
+        <link rel="canonical" href="<?= htmlspecialchars($canonical, ENT_QUOTES, 'UTF-8') ?>">
+    <?php endif; ?>
+    <?php if ($announcement && $jsonLdData !== null): ?>
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@graph": [
-        {
-          "@type": "BreadcrumbList",
-          "itemListElement": [{
-            "@type": "ListItem",
-            "position": 1,
-            "name": "トップ",
-            "item": "https://example.com/"
-          },{
-            "@type": "ListItem",
-            "position": 2,
-            "name": "お知らせ一覧",
-            "item": "https://example.com/announcements/"
-          },{
-            "@type": "ListItem",
-            "position": 3,
-            "name": "【ベトナム】ハノイの新店舗「CRAZY CAT'S」の求人情報を掲載しました。"
-          }]
-        },
-        {
-          "@type": "NewsArticle",
-          "headline": "【ベトナム】ハノイの新店舗「CRAZY CAT'S」の求人情報を掲載しました。",
-          "datePublished": "2025-09-16T09:00:00+09:00",
-          "dateModified": "2025-09-16T09:00:00+09:00",
-          "author": {
-            "@type": "Organization",
-            "name": "海外リゾキャバ求人.COM"
-          },
-          "publisher": {
-            "@type": "Organization",
-            "name": "海外リゾキャバ求人.COM",
-            "logo": {
-              "@type": "ImageObject",
-              "url": "https://example.com/logo.png"
-            }
-          },
-          "description": "ベトナム・ハノイに新しくオープンした日本人オーナーのキャバクラ「CRAZY CAT'S」の求人情報を掲載しました。未経験者でも安心して働ける環境で、高待遇をご用意しています。",
-           "image": "/assets/images/articles/announcement-hero-1200x800.jpg"
-        }
-      ]
-    }
+        <?= json_encode($jsonLdData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>
     </script>
+    <?php endif; ?>
 
     <style>
         :root {
@@ -163,7 +401,7 @@
                       <ol class="list-none p-0 inline-flex">
                         <li class="flex items-center"><a href="/" class="text-gray-500 hover:text-[var(--brand-primary)]">トップ</a><i data-lucide="chevron-right" class="w-3 h-3 mx-1 text-gray-400"></i></li>
                         <li class="flex items-center"><a href="/announcements/" class="text-gray-500 hover:text-[var(--brand-primary)]">お知らせ一覧</a><i data-lucide="chevron-right" class="w-3 h-3 mx-1 text-gray-400"></i></li>
-                        <li class="flex items-center"><span class="text-gray-700 font-medium truncate max-w-[200px] sm:max-w-md">【ベトナム】ハノイの新店舗「CRAZY CAT'S」の求人情報を掲載しました。</span></li>
+                        <li class="flex items-center"><span class="text-gray-700 font-medium truncate max-w-[200px] sm:max-w-md"><?= htmlspecialchars($announcementTitle, ENT_QUOTES, 'UTF-8'); ?></span></li>
                       </ol>
                     </nav>
                 </div>
@@ -173,13 +411,15 @@
                 <div class="max-w-4xl mx-auto bg-white border border-[var(--border-color)] p-6 sm:p-10">
                     <div class="mb-6 pb-6 border-b border-[var(--border-color)]">
                         <div class="flex items-center gap-x-4 mb-3">
-                            <p class="text-sm text-slate-500">2025.09.16</p>
-                            <span class="inline-block bg-green-100 text-green-800 text-xs font-semibold px-2.5 py-1"></span>
+                            <?php if ($publishedDate !== ''): ?>
+                                <p class="text-sm text-slate-500"><?= htmlspecialchars($publishedDate, ENT_QUOTES, 'UTF-8'); ?></p>
+                            <?php endif; ?>
+                            <span class="inline-block text-xs font-semibold px-2.5 py-1 <?= $announcement ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-700'; ?>"><?= $announcement ? '公開中' : '未公開'; ?></span>
                         </div>
-                        <h1 class="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] !leading-tight">【ベトナム】ハノイの新店舗「CRAZY CAT&#039;S」の求人情報を掲載しました。ああ</h1>
+                        <h1 class="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] !leading-tight"><?= htmlspecialchars($announcementTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
                     </div>
 
-                    <article class="prose max-w-none"><p>ハノイに新規オープンした日本人オーナー店「CRAZY CAT'S」の求人情報を掲載aaしました。</p><p>未経験歓迎・寮費無料などの高待遇です。</p></article>
+                    <article class="prose max-w-none"><?= $bodyHtml ?></article>
 
                     <div class="mt-10 pt-8 border-t border-[var(--border-color)] text-center">
                         <a href="/announcements/" class="inline-flex items-center justify-center gap-x-2 w-full sm:w-auto px-8 py-3 text-sm font-semibold text-slate-600 bg-white border border-[var(--border-color)] hover:bg-slate-50 transition-colors">
@@ -199,19 +439,56 @@
                        <div class="relative">
                            <div class="swiper card-carousel">
                                <div class="swiper-wrapper">
-                                   <div class="swiper-slide"><div class="group bg-white shadow-sm border border-[var(--border-color)] overflow-hidden flex flex-col h-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1"><div class="relative"><div class="overflow-hidden"><img src="https://placehold.co/1200x800/0ABAB5/ffffff?text=test1002+1" alt="test1002の画像" class="w-full aspect-video object-cover transition-transform duration-500 ease-in-out group-hover:scale-110" loading="lazy"></div></div><div class="p-4 flex flex-col flex-grow"><h3 class="font-bold text-base mb-3 leading-tight"><a href="/job/33/" class="hover:text-[var(--brand-primary)] transition-colors">test1002</a></h3><div class="flex flex-col space-y-1.5 text-xs text-[var(--text-secondary)] mb-3"><p class="flex items-center gap-x-2"><i data-lucide="map-pin" class="w-4 h-4 flex-shrink-0"></i><span>バンコク</span></p><p class="flex items-center gap-x-2"><i data-lucide="briefcase" class="w-4 h-4 flex-shrink-0"></i><span>キャバクラキャスト</span></p><p class="flex items-center gap-x-2"><i data-lucide="japanese-yen" class="w-4 h-4 flex-shrink-0"></i><span>月給 300,000円</span></p></div><div class="flex flex-wrap gap-x-4 gap-y-1 mb-3 tags-container"></div><div class="mt-auto pt-3 border-t border-[var(--border-color)]"><a href="/job/33/" class="block w-full text-center bg-white border border-[var(--border-color)] text-[var(--text-secondary)] font-bold py-2 px-4 hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] transition-all text-xs">詳しく見る</a></div></div></div>
-                                   <div class="swiper-slide"><div class="group bg-white shadow-sm border border-[var(--border-color)] overflow-hidden flex flex-col h-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1"><div class="relative"><div class="overflow-hidden"><img src="https://gaicaba-st.monochrome-inc.net/shop_images/3249.jpg" alt="【未経験歓迎】手厚い生活サポート付き！海外キャバクラキャスト月収30万～100万円の画像" class="w-full aspect-video object-cover transition-transform duration-500 ease-in-out group-hover:scale-110" loading="lazy"></div></div><div class="p-4 flex flex-col flex-grow"><h3 class="font-bold text-base mb-3 leading-tight"><a href="/job/32/" class="hover:text-[var(--brand-primary)] transition-colors">【未経験歓迎】手厚い生活サポート付き！海外キャバクラキャスト月収30万～100万円</a></h3><div class="flex flex-col space-y-1.5 text-xs text-[var(--text-secondary)] mb-3"><p class="flex items-center gap-x-2"><i data-lucide="map-pin" class="w-4 h-4 flex-shrink-0"></i><span>プノンペン</span></p><p class="flex items-center gap-x-2"><i data-lucide="briefcase" class="w-4 h-4 flex-shrink-0"></i><span>キャバクラ</span></p><p class="flex items-center gap-x-2"><i data-lucide="japanese-yen" class="w-4 h-4 flex-shrink-0"></i><span>月給 300,000円</span></p></div><div class="flex flex-wrap gap-x-4 gap-y-1 mb-3 tags-container"></div><div class="mt-auto pt-3 border-t border-[var(--border-color)]"><a href="/job/32/" class="block w-full text-center bg-white border border-[var(--border-color)] text-[var(--text-secondary)] font-bold py-2 px-4 hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] transition-all text-xs">詳しく見る</a></div></div></div>
-                                   <div class="swiper-slide"><div class="group bg-white shadow-sm border border-[var(--border-color)] overflow-hidden flex flex-col h-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1"><div class="relative"><div class="overflow-hidden"><img src="/assets/images/jobs/job-21-thumb-600x400.jpg" alt="CRAZY CAT&#039;S 求人サンプル 1の画像" class="w-full aspect-video object-cover transition-transform duration-500 ease-in-out group-hover:scale-110" loading="lazy"></div></div><div class="p-4 flex flex-col flex-grow"><h3 class="font-bold text-base mb-3 leading-tight"><a href="/job/21/" class="hover:text-[var(--brand-primary)] transition-colors">CRAZY CAT&#039;S 求人サンプル 1</a></h3><div class="flex flex-col space-y-1.5 text-xs text-[var(--text-secondary)] mb-3"><p class="flex items-center gap-x-2"><i data-lucide="map-pin" class="w-4 h-4 flex-shrink-0"></i><span>ハノイ</span></p><p class="flex items-center gap-x-2"><i data-lucide="briefcase" class="w-4 h-4 flex-shrink-0"></i><span>キャスト</span></p><p class="flex items-center gap-x-2"><i data-lucide="japanese-yen" class="w-4 h-4 flex-shrink-0"></i><span>時給 1,600円</span></p></div><div class="flex flex-wrap gap-x-4 gap-y-1 mb-3 tags-container"></div><p class="text-xs text-slate-500 flex-grow description-truncate">ハノイでのお仕事サンプルです。未経験歓迎。</p><div class="mt-auto pt-3 border-t border-[var(--border-color)]"><a href="/job/21/" class="block w-full text-center bg-white border border-[var(--border-color)] text-[var(--text-secondary)] font-bold py-2 px-4 hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] transition-all text-xs">詳しく見る</a></div></div></div>
-                                   <div class="swiper-slide"><div class="group bg-white shadow-sm border border-[var(--border-color)] overflow-hidden flex flex-col h-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1"><div class="relative"><div class="overflow-hidden"><img src="/assets/images/jobs/job-22-thumb-600x400.jpg" alt="CRAZY CAT&#039;S 求人サンプル 2の画像" class="w-full aspect-video object-cover transition-transform duration-500 ease-in-out group-hover:scale-110" loading="lazy"></div></div><div class="p-4 flex flex-col flex-grow"><h3 class="font-bold text-base mb-3 leading-tight"><a href="/job/22/" class="hover:text-[var(--brand-primary)] transition-colors">CRAZY CAT&#039;S 求人サンプル 2</a></h3><div class="flex flex-col space-y-1.5 text-xs text-[var(--text-secondary)] mb-3"><p class="flex items-center gap-x-2"><i data-lucide="map-pin" class="w-4 h-4 flex-shrink-0"></i><span>ハノイ</span></p><p class="flex items-center gap-x-2"><i data-lucide="briefcase" class="w-4 h-4 flex-shrink-0"></i><span>キャスト</span></p><p class="flex items-center gap-x-2"><i data-lucide="japanese-yen" class="w-4 h-4 flex-shrink-0"></i><span>時給 1,700円</span></p></div><div class="flex flex-wrap gap-x-4 gap-y-1 mb-3 tags-container"></div><p class="text-xs text-slate-500 flex-grow description-truncate">ハノイでのお仕事サンプルです。未経験歓迎。</p><div class="mt-auto pt-3 border-t border-[var(--border-color)]"><a href="/job/22/" class="block w-full text-center bg-white border border-[var(--border-color)] text-[var(--text-secondary)] font-bold py-2 px-4 hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] transition-all text-xs">詳しく見る</a></div></div></div>
-                                   <div class="swiper-slide"><div class="group bg-white shadow-sm border border-[var(--border-color)] overflow-hidden flex flex-col h-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1"><div class="relative"><div class="overflow-hidden"><img src="/assets/images/jobs/no-image-1280w.jpg" alt="【サンプル求人】No.1の画像" class="w-full aspect-video object-cover transition-transform duration-500 ease-in-out group-hover:scale-110" loading="lazy"></div></div><div class="p-4 flex flex-col flex-grow"><h3 class="font-bold text-base mb-3 leading-tight"><a href="/job/27/" class="hover:text-[var(--brand-primary)] transition-colors">【サンプル求人】No.1</a></h3><div class="flex flex-col space-y-1.5 text-xs text-[var(--text-secondary)] mb-3"><p class="flex items-center gap-x-2"><i data-lucide="map-pin" class="w-4 h-4 flex-shrink-0"></i><span>沖縄</span></p><p class="flex items-center gap-x-2"><i data-lucide="briefcase" class="w-4 h-4 flex-shrink-0"></i><span>ホール</span></p><p class="flex items-center gap-x-2"><i data-lucide="japanese-yen" class="w-4 h-4 flex-shrink-0"></i><span>時給 1,450円</span></p></div><div class="flex flex-wrap gap-x-4 gap-y-1 mb-3 tags-container"></div><p class="text-xs text-slate-500 flex-grow description-truncate">これはサンプル求人No.1のお仕事内容です。
-
-主な業務内容：
-・お客様への接客サービス
-・店内の清掃・整理整頓
-・商品の管理・補充
-
-未経験者でも安心してスタートできるよう、丁寧な研修を行います。
-一緒に働く仲間と楽しく、…</p><div class="mt-auto pt-3 border-t border-[var(--border-color)]"><a href="/job/27/" class="block w-full text-center bg-white border border-[var(--border-color)] text-[var(--text-secondary)] font-bold py-2 px-4 hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] transition-all text-xs">詳しく見る</a></div></div></div>
+                                   <?php if (!empty($pickup_jobs)): ?>
+                                       <?php foreach ($pickup_jobs as $job):
+                                           $card = build_job_card_context($job);
+                                           if ($card['id'] <= 0) {
+                                               continue;
+                                           }
+                                           $imageAltTitle = $card['title'] !== '' ? $card['title'] : '求人';
+                                       ?>
+                                           <div class="swiper-slide">
+                                               <div class="group bg-white shadow-sm border border-[var(--border-color)] overflow-hidden flex flex-col h-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+                                                   <div class="relative">
+                                                       <div class="overflow-hidden"><img src="<?= htmlspecialchars($card['image'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?= htmlspecialchars($imageAltTitle, ENT_QUOTES, 'UTF-8'); ?>の画像" class="w-full aspect-video object-cover transition-transform duration-500 ease-in-out group-hover:scale-110" loading="lazy"></div>
+                                                   </div>
+                                                   <div class="p-4 flex flex-col flex-grow">
+                                                       <h3 class="font-bold text-base mb-3 leading-tight"><a href="/job/<?= $card['id']; ?>/" class="hover:text-[var(--brand-primary)] transition-colors"><?= htmlspecialchars($card['title'], ENT_QUOTES, 'UTF-8'); ?></a></h3>
+                                                       <div class="flex flex-col space-y-1.5 text-xs text-[var(--text-secondary)] mb-3">
+                                                           <?php if ($card['location'] !== ''): ?>
+                                                               <p class="flex items-center gap-x-2"><i data-lucide="map-pin" class="w-4 h-4 flex-shrink-0"></i><span><?= htmlspecialchars($card['location'], ENT_QUOTES, 'UTF-8'); ?></span></p>
+                                                           <?php endif; ?>
+                                                           <?php if ($card['employment'] !== ''): ?>
+                                                               <p class="flex items-center gap-x-2"><i data-lucide="briefcase" class="w-4 h-4 flex-shrink-0"></i><span><?= htmlspecialchars($card['employment'], ENT_QUOTES, 'UTF-8'); ?></span></p>
+                                                           <?php endif; ?>
+                                                           <?php if ($card['salary'] !== ''): ?>
+                                                               <p class="flex items-center gap-x-2"><i data-lucide="japanese-yen" class="w-4 h-4 flex-shrink-0"></i><span><?= htmlspecialchars($card['salary'], ENT_QUOTES, 'UTF-8'); ?></span></p>
+                                                           <?php endif; ?>
+                                                           <?php if ($card['period'] !== ''): ?>
+                                                               <p class="flex items-center gap-x-2"><i data-lucide="calendar-days" class="w-4 h-4 flex-shrink-0"></i><span><?= htmlspecialchars($card['period'], ENT_QUOTES, 'UTF-8'); ?></span></p>
+                                                           <?php endif; ?>
+                                                       </div>
+                                                       <div class="flex flex-wrap gap-x-4 gap-y-1 mb-3 tags-container">
+                                                           <?php foreach ($card['tags'] as $tag): ?>
+                                                               <span class="inline-flex items-center text-slate-600 pb-px text-xs" style="border-bottom: 1px solid #e2e8f0;"><i data-lucide="tag" class="w-3 h-3 mr-1 flex-shrink-0"></i> <?= htmlspecialchars($tag, ENT_QUOTES, 'UTF-8'); ?></span>
+                                                           <?php endforeach; ?>
+                                                       </div>
+                                                       <p class="text-xs text-slate-500 flex-grow description-truncate"><?= htmlspecialchars($card['description'], ENT_QUOTES, 'UTF-8'); ?></p>
+                                                       <?php if ($card['updatedDate'] !== ''): ?>
+                                                           <div class="text-right text-xs text-slate-400 mt-2"><span class="inline-flex items-center"><i data-lucide="refresh-cw" class="w-3 h-3 mr-1.5"></i><span>更新日: <?= htmlspecialchars($card['updatedDate'], ENT_QUOTES, 'UTF-8'); ?></span></span></div>
+                                                       <?php endif; ?>
+                                                       <div class="mt-auto pt-3 border-t border-[var(--border-color)]"><a href="/job/<?= $card['id']; ?>/" class="block w-full text-center bg-white border border-[var(--border-color)] text-[var(--text-secondary)] font-bold py-2 px-4 hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] transition-all text-xs">詳しく見る</a></div>
+                                                   </div>
+                                               </div>
+                                           </div>
+                                       <?php endforeach; ?>
+                                   <?php else: ?>
+                                       <div class="swiper-slide">
+                                           <div class="bg-white border border-[var(--border-color)] p-6 sm:p-8 text-center text-sm text-slate-600">
+                                               現在表示できる求人はありません。
+                                           </div>
+                                       </div>
+                                   <?php endif; ?>
                                </div>
                                <div class="swiper-button-prev swiper-nav-button !left-2 md:!-left-2 lg:!-left-4"></div>
                                <div class="swiper-button-next swiper-nav-button !right-2 md:!-right-2 lg:!-left-4"></div>
@@ -230,17 +507,56 @@
                        <div class="relative">
                            <div class="swiper card-carousel">
                                <div class="swiper-wrapper">
-                                   <div class="swiper-slide"><div class="group bg-white shadow-sm border border-[var(--border-color)] overflow-hidden flex flex-col h-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1"><div class="relative"><div class="overflow-hidden"><img src="/assets/images/jobs/job-21-thumb-600x400.jpg" alt="CRAZY CAT&#039;S 求人サンプル 1の画像" class="w-full aspect-video object-cover transition-transform duration-500 ease-in-out group-hover:scale-110" loading="lazy"></div></div><div class="p-4 flex flex-col flex-grow"><h3 class="font-bold text-base mb-3 leading-tight"><a href="/job/21/" class="hover:text-[var(--brand-primary)] transition-colors">CRAZY CAT&#039;S 求人サンプル 1</a></h3><div class="flex flex-col space-y-1.5 text-xs text-[var(--text-secondary)] mb-3"><p class="flex items-center gap-x-2"><i data-lucide="map-pin" class="w-4 h-4 flex-shrink-0"></i><span>ハノイ</span></p><p class="flex items-center gap-x-2"><i data-lucide="briefcase" class="w-4 h-4 flex-shrink-0"></i><span>キャスト</span></p><p class="flex items-center gap-x-2"><i data-lucide="japanese-yen" class="w-4 h-4 flex-shrink-0"></i><span>時給 1,600円</span></p></div><div class="flex flex-wrap gap-x-4 gap-y-1 mb-3 tags-container"></div><p class="text-xs text-slate-500 flex-grow description-truncate">ハノイでのお仕事サンプルです。未経験歓迎。</p><div class="mt-auto pt-3 border-t border-[var(--border-color)]"><a href="/job/21/" class="block w-full text-center bg-white border border-[var(--border-color)] text-[var(--text-secondary)] font-bold py-2 px-4 hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] transition-all text-xs">詳しく見る</a></div></div></div></div>
-                                   <div class="swiper-slide"><div class="group bg-white shadow-sm border border-[var(--border-color)] overflow-hidden flex flex-col h-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1"><div class="relative"><div class="overflow-hidden"><img src="/assets/images/jobs/job-22-thumb-600x400.jpg" alt="CRAZY CAT&#039;S 求人サンプル 2の画像" class="w-full aspect-video object-cover transition-transform duration-500 ease-in-out group-hover:scale-110" loading="lazy"></div></div><div class="p-4 flex flex-col flex-grow"><h3 class="font-bold text-base mb-3 leading-tight"><a href="/job/22/" class="hover:text-[var(--brand-primary)] transition-colors">CRAZY CAT&#039;S 求人サンプル 2</a></h3><div class="flex flex-col space-y-1.5 text-xs text-[var(--text-secondary)] mb-3"><p class="flex items-center gap-x-2"><i data-lucide="map-pin" class="w-4 h-4 flex-shrink-0"></i><span>ハノイ</span></p><p class="flex items-center gap-x-2"><i data-lucide="briefcase" class="w-4 h-4 flex-shrink-0"></i><span>キャスト</span></p><p class="flex items-center gap-x-2"><i data-lucide="japanese-yen" class="w-4 h-4 flex-shrink-0"></i><span>時給 1,700円</span></p></div><div class="flex flex-wrap gap-x-4 gap-y-1 mb-3 tags-container"></div><p class="text-xs text-slate-500 flex-grow description-truncate">ハノイでのお仕事サンプルです。未経験歓迎。</p><div class="mt-auto pt-3 border-t border-[var(--border-color)]"><a href="/job/22/" class="block w-full text-center bg-white border border-[var(--border-color)] text-[var(--text-secondary)] font-bold py-2 px-4 hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] transition-all text-xs">詳しく見る</a></div></div></div></div>
-                                   <div class="swiper-slide"><div class="group bg-white shadow-sm border border-[var(--border-color)] overflow-hidden flex flex-col h-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1"><div class="relative"><div class="overflow-hidden"><img src="/assets/images/jobs/no-image-1280w.jpg" alt="【サンプル求人】No.1の画像" class="w-full aspect-video object-cover transition-transform duration-500 ease-in-out group-hover:scale-110" loading="lazy"></div></div><div class="p-4 flex flex-col flex-grow"><h3 class="font-bold text-base mb-3 leading-tight"><a href="/job/27/" class="hover:text-[var(--brand-primary)] transition-colors">【サンプル求人】No.1</a></h3><div class="flex flex-col space-y-1.5 text-xs text-[var(--text-secondary)] mb-3"><p class="flex items-center gap-x-2"><i data-lucide="map-pin" class="w-4 h-4 flex-shrink-0"></i><span>沖縄</span></p><p class="flex items-center gap-x-2"><i data-lucide="briefcase" class="w-4 h-4 flex-shrink-0"></i><span>ホール</span></p><p class="flex items-center gap-x-2"><i data-lucide="japanese-yen" class="w-4 h-4 flex-shrink-0"></i><span>時給 1,450円</span></p></div><div class="flex flex-wrap gap-x-4 gap-y-1 mb-3 tags-container"></div><p class="text-xs text-slate-500 flex-grow description-truncate">これはサンプル求人No.1のお仕事内容です。
-
-主な業務内容：
-・お客様への接客サービス
-・店内の清掃・整理整頓
-・商品の管理・補充
-
-未経験者でも安心してスタートできるよう、丁寧な研修を行います。
-一緒に働く仲間と楽しく、…</p><div class="mt-auto pt-3 border-t border-[var(--border-color)]"><a href="/job/27/" class="block w-full text-center bg-white border border-[var(--border-color)] text-[var(--text-secondary)] font-bold py-2 px-4 hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] transition-all text-xs">詳しく見る</a></div></div></div></div>
+                                   <?php if (!empty($new_jobs)): ?>
+                                       <?php foreach ($new_jobs as $job):
+                                           $card = build_job_card_context($job);
+                                           if ($card['id'] <= 0) {
+                                               continue;
+                                           }
+                                           $imageAltTitle = $card['title'] !== '' ? $card['title'] : '求人';
+                                       ?>
+                                           <div class="swiper-slide">
+                                               <div class="group bg-white shadow-sm border border-[var(--border-color)] overflow-hidden flex flex-col h-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+                                                   <div class="relative">
+                                                       <div class="overflow-hidden"><img src="<?= htmlspecialchars($card['image'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?= htmlspecialchars($imageAltTitle, ENT_QUOTES, 'UTF-8'); ?>の画像" class="w-full aspect-video object-cover transition-transform duration-500 ease-in-out group-hover:scale-110" loading="lazy"></div>
+                                                   </div>
+                                                   <div class="p-4 flex flex-col flex-grow">
+                                                       <h3 class="font-bold text-base mb-3 leading-tight"><a href="/job/<?= $card['id']; ?>/" class="hover:text-[var(--brand-primary)] transition-colors"><?= htmlspecialchars($card['title'], ENT_QUOTES, 'UTF-8'); ?></a></h3>
+                                                       <div class="flex flex-col space-y-1.5 text-xs text-[var(--text-secondary)] mb-3">
+                                                           <?php if ($card['location'] !== ''): ?>
+                                                               <p class="flex items-center gap-x-2"><i data-lucide="map-pin" class="w-4 h-4 flex-shrink-0"></i><span><?= htmlspecialchars($card['location'], ENT_QUOTES, 'UTF-8'); ?></span></p>
+                                                           <?php endif; ?>
+                                                           <?php if ($card['employment'] !== ''): ?>
+                                                               <p class="flex items-center gap-x-2"><i data-lucide="briefcase" class="w-4 h-4 flex-shrink-0"></i><span><?= htmlspecialchars($card['employment'], ENT_QUOTES, 'UTF-8'); ?></span></p>
+                                                           <?php endif; ?>
+                                                           <?php if ($card['salary'] !== ''): ?>
+                                                               <p class="flex items-center gap-x-2"><i data-lucide="japanese-yen" class="w-4 h-4 flex-shrink-0"></i><span><?= htmlspecialchars($card['salary'], ENT_QUOTES, 'UTF-8'); ?></span></p>
+                                                           <?php endif; ?>
+                                                           <?php if ($card['period'] !== ''): ?>
+                                                               <p class="flex items-center gap-x-2"><i data-lucide="calendar-days" class="w-4 h-4 flex-shrink-0"></i><span><?= htmlspecialchars($card['period'], ENT_QUOTES, 'UTF-8'); ?></span></p>
+                                                           <?php endif; ?>
+                                                       </div>
+                                                       <div class="flex flex-wrap gap-x-4 gap-y-1 mb-3 tags-container">
+                                                           <?php foreach ($card['tags'] as $tag): ?>
+                                                               <span class="inline-flex items-center text-slate-600 pb-px text-xs" style="border-bottom: 1px solid #e2e8f0;"><i data-lucide="tag" class="w-3 h-3 mr-1 flex-shrink-0"></i> <?= htmlspecialchars($tag, ENT_QUOTES, 'UTF-8'); ?></span>
+                                                           <?php endforeach; ?>
+                                                       </div>
+                                                       <p class="text-xs text-slate-500 flex-grow description-truncate"><?= htmlspecialchars($card['description'], ENT_QUOTES, 'UTF-8'); ?></p>
+                                                       <?php if ($card['updatedDate'] !== ''): ?>
+                                                           <div class="text-right text-xs text-slate-400 mt-2"><span class="inline-flex items-center"><i data-lucide="refresh-cw" class="w-3 h-3 mr-1.5"></i><span>更新日: <?= htmlspecialchars($card['updatedDate'], ENT_QUOTES, 'UTF-8'); ?></span></span></div>
+                                                       <?php endif; ?>
+                                                       <div class="mt-auto pt-3 border-t border-[var(--border-color)]"><a href="/job/<?= $card['id']; ?>/" class="block w-full text-center bg-white border border-[var(--border-color)] text-[var(--text-secondary)] font-bold py-2 px-4 hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] transition-all text-xs">詳しく見る</a></div>
+                                                   </div>
+                                               </div>
+                                           </div>
+                                       <?php endforeach; ?>
+                                   <?php else: ?>
+                                       <div class="swiper-slide">
+                                           <div class="bg-white border border-[var(--border-color)] p-6 sm:p-8 text-center text-sm text-slate-600">
+                                               現在表示できる求人はありません。
+                                           </div>
+                                       </div>
+                                   <?php endif; ?>
                                </div>
                                <div class="swiper-button-prev swiper-nav-button !left-2 md:!-left-2 lg:!-left-4"></div>
                                <div class="swiper-button-next swiper-nav-button !right-2 md:!-right-2 lg:!-left-4"></div>
