@@ -19,6 +19,7 @@
                     <a href="#" class="text-slate-400 hover:text-white" aria-label="Instagram"><i data-lucide="instagram"></i></a>
                     <a href="#" class="text-slate-400 hover:text-white" aria-label="Facebook"><i data-lucide="facebook"></i></a>
                 </div>
+                <p class="text-xs text-slate-400 mt-2">運営者：海外リゾキャバ求人.COM運営</p>
             </div>
 
             <!-- Footer Links -->
@@ -37,7 +38,6 @@
                     <h4 class="font-semibold text-sm text-white mb-4 tracking-wider">規約・サポート情報</h4>
                     <ul class="space-y-3 text-xs">
                         <li><a href="/contact/" class="hover:text-white transition-colors">お問い合わせ</a></li>
-                        <li><a href="/company/" class="hover:text-white transition-colors">運営情報</a></li>
                         <li><a href="/terms/" class="hover:text-white transition-colors">利用規約</a></li>
                         <li><a href="/privacy/" class="hover:text-white transition-colors">プライバシーポリシー</a></li>
                     </ul>
@@ -50,3 +50,20 @@
         </div>
     </div>
 </footer>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Mobile menu toggle
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+        if (mobileMenuButton && mobileMenu) {
+            mobileMenuButton.addEventListener('click', function () {
+                mobileMenu.classList.toggle('hidden');
+                mobileMenuButton.setAttribute('aria-expanded', !mobileMenu.classList.contains('hidden'));
+            });
+        }
+        // Lucide icons initialization
+        if (window.lucide && window.lucide.createIcons) {
+            window.lucide.createIcons();
+        }
+    });
+</script>

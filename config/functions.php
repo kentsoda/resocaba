@@ -59,7 +59,44 @@ function get_job_list_with_images() {
     foreach ($jobs as &$job) {
         $job['images'] = isset($images_by_job[$job['id']]) ? $images_by_job[$job['id']] : [];
     }
-    
+    unset($job);
+
+    // タグを一括取得（meta_jsonのtag_idsから）
+    $tag_ids = [];
+    foreach ($jobs as $job) {
+        $meta = json_decode($job['meta_json'] ?? '', true);
+        if (is_array($meta) && isset($meta['tag_ids']) && is_array($meta['tag_ids'])) {
+            $tag_ids = array_merge($tag_ids, $meta['tag_ids']);
+        }
+    }
+    $tag_ids = array_unique(array_filter($tag_ids));
+
+    $tags_by_id = [];
+    if (!empty($tag_ids)) {
+        $placeholders = str_repeat('?,', count($tag_ids) - 1) . '?';
+        $tagSql = "SELECT id, name FROM tags WHERE id IN ({$placeholders}) ORDER BY sort_order ASC, name ASC";
+        $tagRows = executeQuery($tagSql, $tag_ids);
+        if ($tagRows !== false) {
+            foreach ($tagRows as $tagRow) {
+                $tags_by_id[$tagRow['id']] = $tagRow['name'];
+            }
+        }
+    }
+
+    foreach ($jobs as &$job) {
+        $jobTags = [];
+        $meta = json_decode($job['meta_json'] ?? '', true);
+        if (is_array($meta) && isset($meta['tag_ids']) && is_array($meta['tag_ids'])) {
+            foreach ($meta['tag_ids'] as $tag_id) {
+                if (isset($tags_by_id[$tag_id])) {
+                    $jobTags[] = $tags_by_id[$tag_id];
+                }
+            }
+        }
+        $job['tags'] = array_slice($jobTags, 0, 5); // 最大5件
+    }
+    unset($job);
+
     return $jobs;
 }
 
@@ -347,6 +384,28 @@ function count_jobs($filters = []) {
         $params[] = $kw;
     }
 
+    // エリア絞り込み（country / region_prefecture のいずれか一致）
+    if (isset($filters['area']) && $filters['area'] !== '' && $filters['area'] !== 'all') {
+        if (is_array($filters['area'])) {
+            // 複数エリアの場合
+            $placeholders = str_repeat('?,', count($filters['area']) - 1) . '?';
+            $conditions[] = "(country IN ({$placeholders}) OR region_prefecture IN ({$placeholders}))";
+            $params = array_merge($params, $filters['area'], $filters['area']);
+        } else {
+            // 単一エリアの場合（後方互換）
+            $conditions[] = "(country = ? OR region_prefecture = ?)";
+            $params[] = $filters['area'];
+            $params[] = $filters['area'];
+        }
+    }
+
+    // 職種絞り込み
+    if (isset($filters['employment']) && is_array($filters['employment']) && !empty($filters['employment'])) {
+        $placeholders = str_repeat('?,', count($filters['employment']) - 1) . '?';
+        $conditions[] = "employment_type IN ({$placeholders})";
+        $params = array_merge($params, $filters['employment']);
+    }
+
     if (!empty($conditions)) {
         $sql .= ' AND ' . implode(' AND ', $conditions);
     }
@@ -359,8 +418,22 @@ function count_jobs($filters = []) {
 }
 
 /**
+ * 職種一覧を取得する
+ *
+ * @return array 職種の配列
+ */
+function get_employment_types() {
+    $sql = "SELECT DISTINCT employment_type FROM jobs WHERE status = 'published' AND deleted_at IS NULL AND employment_type IS NOT NULL AND employment_type != '' ORDER BY employment_type";
+    $result = executeQuery($sql);
+    if ($result === false) {
+        return [];
+    }
+    return array_column($result, 'employment_type');
+}
+
+/**
  * 一覧用: 求人をページング取得し、画像を一括付与する
- * 
+ *
  * @param array $filters フィルタ条件（将来拡張用）
  * @param int $offset 取得開始オフセット
  * @param int $limit 取得件数
@@ -381,9 +454,23 @@ function get_jobs($filters = [], $offset = 0, $limit = 20) {
 
     // エリア絞り込み（country / region_prefecture のいずれか一致）
     if (isset($filters['area']) && $filters['area'] !== '' && $filters['area'] !== 'all') {
-        $conditions[] = "(country = ? OR region_prefecture = ?)";
-        $params[] = $filters['area'];
-        $params[] = $filters['area'];
+        if (is_array($filters['area'])) {
+            // 複数エリアの場合
+            $placeholders = str_repeat('?,', count($filters['area']) - 1) . '?';
+            $conditions[] = "(country IN ({$placeholders}) OR region_prefecture IN ({$placeholders}))";
+            $params = array_merge($params, $filters['area'], $filters['area']);
+        } else {
+            // 単一エリアの場合（後方互換）
+            $conditions[] = "(country = ? OR region_prefecture = ?)";
+            $params[] = $filters['area'];
+            $params[] = $filters['area'];
+        }
+    }
+
+    // カテゴリ絞り込み
+    if (isset($filters['category']) && $filters['category'] !== '' && $filters['category'] !== 'all') {
+        $conditions[] = "category = ?";
+        $params[] = $filters['category'];
     }
 
     // 指定IDを除外
@@ -392,12 +479,38 @@ function get_jobs($filters = [], $offset = 0, $limit = 20) {
         $params[] = (int)$filters['exclude_id'];
     }
 
+    // 職種絞り込み
+    if (isset($filters['employment']) && is_array($filters['employment']) && !empty($filters['employment'])) {
+        $placeholders = str_repeat('?,', count($filters['employment']) - 1) . '?';
+        $conditions[] = "employment_type IN ({$placeholders})";
+        $params = array_merge($params, $filters['employment']);
+    }
+
     if (!empty($conditions)) {
         $sql .= ' AND ' . implode(' AND ', $conditions);
     }
 
-    // 新着順（created_at が無い環境では id の降順で近似）
-    $sql .= " ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?";
+    // 並び替え
+    $orderBy = "created_at DESC, id DESC"; // デフォルト: 新着順
+    if (isset($filters['sort'])) {
+        switch ($filters['sort']) {
+            case 'salary_desc':
+                // 給与の高い順（salary_minの降順、NULLは最後）
+                $orderBy = "CASE WHEN salary_min IS NULL THEN 1 ELSE 0 END, salary_min DESC, created_at DESC";
+                break;
+            case 'popular':
+                // 人気順（仮: 更新日時が新しい順とする）
+                $orderBy = "updated_at DESC, created_at DESC, id DESC";
+                break;
+            case 'new':
+            default:
+                // 新着順
+                $orderBy = "created_at DESC, id DESC";
+                break;
+        }
+    }
+
+    $sql .= " ORDER BY {$orderBy} LIMIT ? OFFSET ?";
     $params[] = (int)$limit;
     $params[] = (int)$offset;
 
@@ -424,6 +537,42 @@ function get_jobs($filters = [], $offset = 0, $limit = 20) {
 
     foreach ($jobs as &$job) {
         $job['images'] = isset($images_by_job[$job['id']]) ? $images_by_job[$job['id']] : [];
+    }
+    unset($job);
+
+    // タグを一括取得（meta_jsonのtag_idsから）
+    $tag_ids = [];
+    foreach ($jobs as $job) {
+        $meta = json_decode($job['meta_json'] ?? '', true);
+        if (is_array($meta) && isset($meta['tag_ids']) && is_array($meta['tag_ids'])) {
+            $tag_ids = array_merge($tag_ids, $meta['tag_ids']);
+        }
+    }
+    $tag_ids = array_unique(array_filter($tag_ids));
+
+    $tags_by_id = [];
+    if (!empty($tag_ids)) {
+        $placeholders = str_repeat('?,', count($tag_ids) - 1) . '?';
+        $tagSql = "SELECT id, name FROM tags WHERE id IN ({$placeholders}) ORDER BY sort_order ASC, name ASC";
+        $tagRows = executeQuery($tagSql, $tag_ids);
+        if ($tagRows !== false) {
+            foreach ($tagRows as $tagRow) {
+                $tags_by_id[$tagRow['id']] = $tagRow['name'];
+            }
+        }
+    }
+
+    foreach ($jobs as &$job) {
+        $jobTags = [];
+        $meta = json_decode($job['meta_json'] ?? '', true);
+        if (is_array($meta) && isset($meta['tag_ids']) && is_array($meta['tag_ids'])) {
+            foreach ($meta['tag_ids'] as $tag_id) {
+                if (isset($tags_by_id[$tag_id])) {
+                    $jobTags[] = $tags_by_id[$tag_id];
+                }
+            }
+        }
+        $job['tags'] = array_slice($jobTags, 0, 5); // 最大5件
     }
     unset($job);
 
@@ -538,6 +687,12 @@ function count_stores($filters = []) {
         $params[] = $filters['area'];
     }
 
+    // カテゴリ絞り込み
+    if (isset($filters['category']) && $filters['category'] !== '' && $filters['category'] !== 'all') {
+        $conditions[] = "category = ?";
+        $params[] = $filters['category'];
+    }
+
     if (!empty($conditions)) {
         $sql .= ' AND ' . implode(' AND ', $conditions);
     }
@@ -567,6 +722,12 @@ function get_stores($filters = [], $offset = 0, $limit = 20) {
         $conditions[] = "(country = ? OR region_prefecture = ?)";
         $params[] = $filters['area'];
         $params[] = $filters['area'];
+    }
+
+    // カテゴリ絞り込み
+    if (isset($filters['category']) && $filters['category'] !== '' && $filters['category'] !== 'all') {
+        $conditions[] = "category = ?";
+        $params[] = $filters['category'];
     }
 
     if (!empty($conditions)) {
