@@ -51,10 +51,18 @@ if (isset($_GET['sort']) && $_GET['sort'] !== '') {
     $filters['sort'] = $_GET['sort'];
 }
 // 職種絞り込み
-if (isset($_GET['employment']) && is_array($_GET['employment']) && !empty($_GET['employment'])) {
-    $filters['employment'] = array_filter($_GET['employment'], function($v) {
-        return $v !== '';
-    });
+$employments = [];
+if (isset($_GET['employment'])) {
+    if (is_array($_GET['employment'])) {
+        $employments = array_merge($employments, array_filter($_GET['employment'], function($v) {
+            return $v !== '';
+        }));
+    } else {
+        $employments[] = $_GET['employment'];
+    }
+}
+if (!empty($employments)) {
+    $filters['employment'] = array_unique($employments);
 }
 
 $total = 0;

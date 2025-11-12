@@ -1073,7 +1073,7 @@
                             params.set('period', 'long');
                         }
                     }
-                    if (type) params.set('type', type);
+                    if (type) params.set('employment', type);
                     var p = (function() {
                         var b = document.querySelector('base');
                         if (b && b.href) {

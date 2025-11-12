@@ -486,6 +486,12 @@ function get_jobs($filters = [], $offset = 0, $limit = 20) {
         $params = array_merge($params, $filters['employment']);
     }
 
+    // 店舗ID絞り込み
+    if (isset($filters['store_id']) && (int)$filters['store_id'] > 0) {
+        $conditions[] = "store_id = ?";
+        $params[] = (int)$filters['store_id'];
+    }
+
     if (!empty($conditions)) {
         $sql .= ' AND ' . implode(' AND ', $conditions);
     }

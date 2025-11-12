@@ -85,6 +85,8 @@ Xserver環境に合わせてファイルを配置します。
 
 詳細な仕様・実装ドキュメントは `docs/` ディレクトリを参照してください。
 
+- `docs/architecture_overview.md` - システム全体のアーキテクチャ概要
+- `docs/coding_standards.md` - コーディング規約・スタイルガイド
 - `docs/管理画面CMS_仕様まとめ_2025-10-28.md` - 管理画面の仕様
 - `docs/database_specification.md` - データベース仕様
 - `docs/admin_panel_plan.md` - 管理画面実装計画

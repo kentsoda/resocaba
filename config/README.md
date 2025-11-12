@@ -19,6 +19,7 @@
 config/
 ├── database.php      # データベース接続設定
 ├── crud.php         # CRUD操作用の関数
+├── functions.php    # その他ユーティリティ関数（求人・店舗・お知らせ取得など）
 └── README.md        # この説明書
 
 public_html/

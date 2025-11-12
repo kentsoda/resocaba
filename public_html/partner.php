@@ -165,6 +165,7 @@ require_once __DIR__ . '/includes/header.php';
         @media (min-width: 768px) { .swiper-nav-button { display: flex; } }
         .swiper-nav-button:hover { background-color: var(--bg-muted); color: var(--brand-primary); }
         .swiper-button-disabled { opacity: 0.1; pointer-events: none; }
+        .swiper-wrapper {height: auto;}
 
         /* Lightbox for gallery */
         .lightbox { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.9); }
@@ -312,11 +313,89 @@ require_once __DIR__ . '/includes/header.php';
                     
                     <!-- このお店の求人 -->
                     <?php if ($store): ?>
+                    <?php
+                    // このお店の求人を取得（最大4件）
+                    $storeJobs = [];
+                    try {
+                        $storeJobs = get_jobs(['store_id' => $partnerId], 0, 4);
+                        if ($storeJobs === false) {
+                            $storeJobs = [];
+                        }
+                    } catch (Throwable $e) {
+                        $storeJobs = [];
+                    }
+                    ?>
                     <section class="bg-white p-6 sm:p-8 border border-[var(--border-color)]">
                          <h2 class="text-xl font-bold text-slate-800 pb-3 border-b-2 border-[var(--brand-primary)] mb-6">このお店の求人</h2>
                          <div class="space-y-6">
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <!-- 求人カードは将来実装 -->
+                                <?php if (!empty($storeJobs)): ?>
+                                    <?php foreach ($storeJobs as $job): 
+                                        $jobId = (int)($job['id'] ?? 0);
+                                        $title = $job['title'] ?? '';
+                                        $city = $job['city'] ?? '';
+                                        $region = $job['region_prefecture'] ?? '';
+                                        $country = $job['country'] ?? '';
+                                        $employment = $job['employment_type'] ?? '';
+                                        $salaryMin = isset($job['salary_min']) ? (int)$job['salary_min'] : null;
+                                        $salaryUnit = $job['salary_unit'] ?? 'HOUR';
+                                        
+                                        // 画像URLを取得
+                                        $imageUrl = '/assets/images/jobs/no-image-1280w.jpg';
+                                        if (!empty($job['images']) && is_array($job['images'])) {
+                                            $firstImage = $job['images'][0] ?? null;
+                                            if ($firstImage && !empty($firstImage['image_url'])) {
+                                                $imageUrl = $firstImage['image_url'];
+                                            }
+                                        }
+                                        
+                                        // エリア情報
+                                        $area = $city ?: ($region ?: $country);
+                                        
+                                        // 給与表示
+                                        $salaryLabel = '';
+                                        if ($salaryMin !== null) {
+                                            if ($salaryUnit === 'MONTH') {
+                                                $salaryLabel = '月給 ' . number_format($salaryMin) . '円';
+                                            } elseif ($salaryUnit === 'DAY') {
+                                                $salaryLabel = '日給 ' . number_format($salaryMin) . '円';
+                                            } else {
+                                                $salaryLabel = '時給 ' . number_format($salaryMin) . '円';
+                                            }
+                                        }
+                                    ?>
+                                        <div class="group bg-white shadow-sm border border-[var(--border-color)] overflow-hidden flex flex-col h-full transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+                                            <div class="relative">
+                                                <div class="overflow-hidden">
+                                                    <img src="<?= htmlspecialchars($imageUrl, ENT_QUOTES, 'UTF-8'); ?>" alt="<?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?>の画像" class="w-full aspect-video object-cover transition-transform duration-500 ease-in-out group-hover:scale-110" loading="lazy">
+                                                </div>
+                                            </div>
+                                            <div class="p-4 flex flex-col flex-grow">
+                                                <h3 class="font-bold text-base mb-3 leading-tight">
+                                                    <a href="/job/<?= $jobId; ?>/" class="hover:text-[var(--brand-primary)] transition-colors"><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8'); ?></a>
+                                                </h3>
+                                                <div class="flex flex-col space-y-1.5 text-xs text-[var(--text-secondary)] mb-3">
+                                                    <?php if ($area): ?>
+                                                        <p class="flex items-center gap-x-2"><i data-lucide="map-pin" class="w-4 h-4 flex-shrink-0"></i><span><?= htmlspecialchars($area, ENT_QUOTES, 'UTF-8'); ?></span></p>
+                                                    <?php endif; ?>
+                                                    <?php if ($employment): ?>
+                                                        <p class="flex items-center gap-x-2"><i data-lucide="briefcase" class="w-4 h-4 flex-shrink-0"></i><span><?= htmlspecialchars($employment, ENT_QUOTES, 'UTF-8'); ?></span></p>
+                                                    <?php endif; ?>
+                                                    <?php if ($salaryLabel): ?>
+                                                        <p class="flex items-center gap-x-2"><i data-lucide="japanese-yen" class="w-4 h-4 flex-shrink-0"></i><span><?= htmlspecialchars($salaryLabel, ENT_QUOTES, 'UTF-8'); ?></span></p>
+                                                    <?php endif; ?>
+                                                </div>
+                                                <div class="mt-auto pt-3 border-t border-[var(--border-color)]">
+                                                    <a href="/job/<?= $jobId; ?>/" class="block w-full text-center bg-white border border-[var(--border-color)] text-[var(--text-secondary)] font-bold py-2 px-4 hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] transition-all text-xs">詳しく見る</a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <div class="col-span-2 md:col-span-4 text-center py-8">
+                                        <p class="text-sm text-slate-500">現在、このお店の求人はありません。</p>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                             <div class="mt-4 text-right">
                                 <a href="/jobs/?store_id=<?= $partnerId; ?>" class="inline-flex items-center gap-x-1 text-sm font-bold text-[var(--brand-primary)] hover:opacity-80">

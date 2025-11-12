@@ -42,8 +42,8 @@
         $salaryUnit = $job['salary_unit'] ?? 'HOUR';
         $salaryMin = isset($job['salary_min']) ? (int)$job['salary_min'] : null;
         $orgName = $job['store']['name'] ?? '掲載店舗';
-        $region = $job['region_prefecture'] ?? '';
-        $country = $job['country'] ?? '';
+        $region = $job['store']['region_prefecture'] ?? ($job['region_prefecture'] ?? '');
+        $country = $job['store']['country'] ?? '';
         $addressRegion = $region ?: '';
         $addressCountry = $country ?: '';
         $datePosted = $job['created_at'] ?? null;
@@ -203,7 +203,14 @@
                     
                     <div class="mt-6 flex flex-wrap gap-x-6 gap-y-3 text-sm text-[var(--text-secondary)]">
                         <?php if ($job): ?>
-                        <div class="flex items-center gap-x-2"><i data-lucide="map-pin" class="w-4 h-4 text-slate-400"></i><span><?php echo htmlspecialchars(($job['country'] ?? '') . ' / ' . ($job['region_prefecture'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span></div>
+                        <div class="flex items-center gap-x-2"><i data-lucide="map-pin" class="w-4 h-4 text-slate-400"></i><span><?php 
+                            $headerCountry = $job['store']['country'] ?? '';
+                            $headerRegion = $job['store']['region_prefecture'] ?? ($job['region_prefecture'] ?? '');
+                            $headerLocation = [];
+                            if ($headerCountry !== '') $headerLocation[] = $headerCountry;
+                            if ($headerRegion !== '') $headerLocation[] = $headerRegion;
+                            echo htmlspecialchars(implode(' / ', $headerLocation), ENT_QUOTES, 'UTF-8'); 
+                        ?></span></div>
                         <div class="flex items-center gap-x-2"><i data-lucide="dollar-sign" class="w-4 h-4 text-slate-400"></i><span><?php echo ($job['salary_unit'] ?? 'HOUR') === 'MONTH' ? '月給 ' . number_format((int)($job['salary_min'] ?? 0)) . '円' : '時給 ' . number_format((int)($job['salary_min'] ?? 0)) . '円'; ?></span></div>
                         <div class="flex items-center gap-x-2"><i data-lucide="briefcase" class="w-4 h-4 text-slate-400"></i><span><?php echo htmlspecialchars($job['employment_type'] ?? '', ENT_QUOTES, 'UTF-8'); ?></span></div>
                         <?php endif; ?>
@@ -250,11 +257,14 @@
                     <?php endif; ?>
 
                     <!-- Merits/Tags Section -->
-                    <?php 
+                    <?php
                     $merits = [];
                     if ($job) {
-                        if (!empty($job['merits']) && is_array($job['merits'])) {
-                            $merits = $job['merits'];
+                        if (!empty($job['benefits_json'])) {
+                            $decodedBenefits = json_decode($job['benefits_json'], true);
+                            if (is_array($decodedBenefits)) {
+                                $merits = $decodedBenefits;
+                            }
                         } elseif (!empty($job['tags']) && is_array($job['tags'])) {
                             $merits = $job['tags'];
                         }
@@ -303,13 +313,118 @@
                     <?php endif; ?>
 
                     <!-- Summary Table -->
-                    <?php if ($job): ?>
+                    <?php 
+                    // meta_jsonを展開
+                    $meta = [];
+                    $salaryText = '';
+                    $locationText = '';
+                    $storeAddress = '';
+                    
+                    if ($job) {
+                        if (!empty($job['meta_json'])) {
+                            $decodedMeta = json_decode($job['meta_json'], true);
+                            if (is_array($decodedMeta)) {
+                                $meta = $decodedMeta;
+                            }
+                        }
+                        
+                        // 給与表示用の変数を準備
+                        $salaryUnit = $job['salary_unit'] ?? 'HOUR';
+                        $salaryMin = isset($job['salary_min']) ? (int)$job['salary_min'] : null;
+                        $salaryMax = isset($job['salary_max']) ? (int)$job['salary_max'] : null;
+                        if ($salaryMin !== null) {
+                            $unitLabel = ($salaryUnit === 'MONTH') ? '月給' : (($salaryUnit === 'DAY') ? '日給' : '時給');
+                            $salaryText = $unitLabel . ' ' . number_format($salaryMin);
+                            if ($salaryMax !== null && $salaryMax > $salaryMin) {
+                                $salaryText .= '〜' . number_format($salaryMax);
+                            }
+                            $salaryText .= '円';
+                        }
+                        
+                        // 勤務地表示用の変数を準備
+                        $locationParts = [];
+                        // countryとregion_prefectureはstoresテーブルから取得
+                        $storeCountry = !empty($job['store']['country']) ? $job['store']['country'] : '';
+                        $storeRegion = !empty($job['store']['region_prefecture']) ? $job['store']['region_prefecture'] : '';
+                        // jobsテーブルのregion_prefectureもフォールバックとして使用
+                        if ($storeRegion === '' && !empty($job['region_prefecture'])) {
+                            $storeRegion = $job['region_prefecture'];
+                        }
+                        if ($storeCountry !== '') {
+                            $locationParts[] = $storeCountry;
+                        }
+                        if ($storeRegion !== '') {
+                            $locationParts[] = $storeRegion;
+                        }
+                        $locationText = implode(' / ', $locationParts);
+                        $storeAddress = !empty($job['store']['address']) ? $job['store']['address'] : '';
+                    }
+                    
+                    if ($job): ?>
                     <section class="bg-white p-6 sm:p-8 border border-[var(--border-color)]">
                          <h2 class="text-xl font-bold text-slate-800 pb-3 border-b-2 border-[var(--brand-primary)] mb-6">募集要項</h2>
                          <dl class="text-sm">
-                            <div class="sm:grid sm:grid-cols-3 sm:gap-4 py-3 border-b border-dashed border-slate-200"><dt class="font-semibold text-slate-500">職種</dt><dd class="text-slate-800 font-medium mt-1 sm:mt-0 sm:col-span-2"><?php echo htmlspecialchars($job['employment_type'] ?? '', ENT_QUOTES, 'UTF-8'); ?></dd></div>
-                            <div class="sm:grid sm:grid-cols-3 sm:gap-4 py-3 border-b border-dashed border-slate-200"><dt class="font-semibold text-slate-500">給与</dt><dd class="text-slate-800 font-medium mt-1 sm:mt-0 sm:col-span-2"><?php echo ($job['salary_unit'] ?? 'HOUR') === 'MONTH' ? '月給 ' . number_format((int)($job['salary_min'] ?? 0)) . '円' : '時給 ' . number_format((int)($job['salary_min'] ?? 0)) . '円'; ?></dd></div>
-                            <div class="sm:grid sm:grid-cols-3 sm:gap-4 py-3 border-b border-dashed border-slate-200"><dt class="font-semibold text-slate-500">勤務地</dt><dd class="text-slate-800 font-medium mt-1 sm:mt-0 sm:col-span-2"><?php echo htmlspecialchars(($job['country'] ?? '') . ($job['region_prefecture'] ? ' / ' . $job['region_prefecture'] : ''), ENT_QUOTES, 'UTF-8'); ?></dd></div>
+                            <div class="sm:grid sm:grid-cols-3 sm:gap-4 py-3 border-b border-dashed border-slate-200">
+                                <dt class="font-semibold text-slate-500">職種</dt>
+                                <dd class="text-slate-800 font-medium mt-1 sm:mt-0 sm:col-span-2"><?php echo htmlspecialchars($job['employment_type'] ?? '', ENT_QUOTES, 'UTF-8') ?: '未定'; ?></dd>
+                            </div>
+                            <div class="sm:grid sm:grid-cols-3 sm:gap-4 py-3 border-b border-dashed border-slate-200">
+                                <dt class="font-semibold text-slate-500">給与</dt>
+                                <dd class="text-slate-800 font-medium mt-1 sm:mt-0 sm:col-span-2"><?php echo $salaryText !== '' ? htmlspecialchars($salaryText, ENT_QUOTES, 'UTF-8') : '未定'; ?></dd>
+                            </div>
+                            <div class="sm:grid sm:grid-cols-3 sm:gap-4 py-3 border-b border-dashed border-slate-200">
+                                <dt class="font-semibold text-slate-500">勤務地</dt>
+                                <dd class="text-slate-800 font-medium mt-1 sm:mt-0 sm:col-span-2">
+                                    <?php if ($locationText !== '' || $storeAddress !== ''): ?>
+                                        <?php if ($locationText !== ''): ?>
+                                            <div><?php echo htmlspecialchars($locationText, ENT_QUOTES, 'UTF-8'); ?></div>
+                                        <?php endif; ?>
+                                        <?php if ($storeAddress !== ''): ?>
+                                            <div class="mt-1 text-slate-600"><?php echo htmlspecialchars($storeAddress, ENT_QUOTES, 'UTF-8'); ?></div>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        未定
+                                    <?php endif; ?>
+                                </dd>
+                            </div>
+                            <div class="sm:grid sm:grid-cols-3 sm:gap-4 py-3 border-b border-dashed border-slate-200">
+                                <dt class="font-semibold text-slate-500">営業時間</dt>
+                                <dd class="text-slate-800 font-medium mt-1 sm:mt-0 sm:col-span-2"><?php 
+                                    $hours = !empty($meta['business_hours']) ? $meta['business_hours'] : (!empty($meta['hours']) ? $meta['hours'] : '');
+                                    echo $hours !== '' ? htmlspecialchars((string)$hours, ENT_QUOTES, 'UTF-8') : '未定'; 
+                                ?></dd>
+                            </div>
+                            <div class="sm:grid sm:grid-cols-3 sm:gap-4 py-3 border-b border-dashed border-slate-200">
+                                <dt class="font-semibold text-slate-500">待遇・福利厚生</dt>
+                                <dd class="text-slate-800 font-medium mt-1 sm:mt-0 sm:col-span-2">
+                                    <?php if (!empty($merits)): ?>
+                                        <ul class="list-none pl-0 space-y-1">
+                                            <?php foreach ($merits as $benefit): ?>
+                                            <li class="flex items-start">
+                                                <span class="mr-2 text-[var(--brand-primary)]">・</span>
+                                                <span><?php echo htmlspecialchars((string)$benefit, ENT_QUOTES, 'UTF-8'); ?></span>
+                                            </li>
+                                            <?php endforeach; ?>
+                                        </ul>
+                                    <?php else: ?>
+                                        未定
+                                    <?php endif; ?>
+                                </dd>
+                            </div>
+                            <div class="sm:grid sm:grid-cols-3 sm:gap-4 py-3 border-b border-dashed border-slate-200">
+                                <dt class="font-semibold text-slate-500">店休日</dt>
+                                <dd class="text-slate-800 font-medium mt-1 sm:mt-0 sm:col-span-2"><?php 
+                                    $holiday = !empty($meta['regular_holiday']) ? $meta['regular_holiday'] : (!empty($meta['holiday']) ? $meta['holiday'] : '');
+                                    echo $holiday !== '' ? htmlspecialchars((string)$holiday, ENT_QUOTES, 'UTF-8') : '未定'; 
+                                ?></dd>
+                            </div>
+                            <div class="sm:grid sm:grid-cols-3 sm:gap-4 py-3 border-b border-dashed border-slate-200">
+                                <dt class="font-semibold text-slate-500">期間</dt>
+                                <dd class="text-slate-800 font-medium mt-1 sm:mt-0 sm:col-span-2"><?php 
+                                    $period = !empty($meta['min_term']) && $meta['min_term'] !== '未選択' ? $meta['min_term'] : (!empty($meta['period']) ? $meta['period'] : '');
+                                    echo $period !== '' ? htmlspecialchars((string)$period, ENT_QUOTES, 'UTF-8') : '未定'; 
+                                ?></dd>
+                            </div>
                          </dl>
                     </section>
                     <?php endif; ?>
@@ -523,10 +638,12 @@
             <?php 
                 $sameAreaFilters = [];
                 $areaKey = '';
-                if (!empty($job['region_prefecture'])) {
-                    $areaKey = (string)$job['region_prefecture'];
-                } elseif (!empty($job['country'])) {
-                    $areaKey = (string)$job['country'];
+                $filterRegion = $job['store']['region_prefecture'] ?? ($job['region_prefecture'] ?? '');
+                $filterCountry = $job['store']['country'] ?? '';
+                if ($filterRegion !== '') {
+                    $areaKey = (string)$filterRegion;
+                } elseif ($filterCountry !== '') {
+                    $areaKey = (string)$filterCountry;
                 }
                 if ($areaKey !== '') {
                     $sameAreaFilters['area'] = $areaKey;
